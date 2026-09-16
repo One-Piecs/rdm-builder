@@ -33,7 +33,10 @@ env:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   create_release:
-    runs-on: windows-2019
+    # windows-2019 is retired by GitHub, which left this job queued for 24h and
+    # then cancelled - blocking every build. This job only runs two actions, so
+    # any runner image works.
+    runs-on: ubuntu-latest
     # https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjobs_idoutputs
     # Map a step output to a job output
     outputs:
@@ -211,8 +214,15 @@ jobs:
 
   build_on_osx:
     needs: create_release
-    # runs-on: macos-latest
-    runs-on: macos-12
+    # Apple Silicon (arm64) runner.
+    # macos-12/macos-13 (Intel) images are retired, and Apple is dropping x86_64
+    # app support in upcoming macOS releases, so build for arm64 natively.
+    runs-on: macos-15
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALL_CLEANUP: 1
+      # macOS 11.0 is the first release that runs on Apple Silicon.
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -224,69 +234,59 @@ jobs:
         submodules: 'recursive'
         ref: ${{ env.RDM_REF }}
 
-#     - name: update submodules
-#       run: |
-#         cd rdm
-#         git submodule update --remote
+    # Qt 5 has no arm64 build for macOS: the official 5.15.x packages are
+    # "clang_64" (x86_64 only), and linking them on Apple Silicon would silently
+    # produce an Intel app. Homebrew ships a native arm64 Qt 5 with QtCharts.
+    - name: install QT
+      run: |
+        brew install qt@5
+        echo "$(brew --prefix qt@5)/bin" >> $GITHUB_PATH
 
+    # pyotherside (the Python QML bridge) hardcodes the Intel-Homebrew path
+    # /usr/local/bin/python3-config. On arm64 runners Homebrew lives in
+    # /opt/homebrew, so without this the Python headers/libs are never found.
+    - name: fix python config path
+      run: |
+        PYTHON_CONFIG="$(command -v python3-config || true)"
+        if [ -z "$PYTHON_CONFIG" ]; then
+          PYTHON_CONFIG="$(python3 -c 'import sysconfig;print(sysconfig.get_config_var("BINDIR"))')/python3-config"
+        fi
+        echo "using ${PYTHON_CONFIG}"
+        sed -i '' "s|/usr/local/bin/python3-config|${PYTHON_CONFIG}|" rdm/3rdparty/pyotherside.pri
+        grep -n "PYTHON_CONFIG = " rdm/3rdparty/pyotherside.pri
+
+    # CMAKE_POLICY_VERSION_MINIMUM: CMake 4 dropped support for the
+    # `cmake_minimum_required(VERSION 2.x)` used by these vendored projects.
+    # lz4/zstd/snappy/brotli are linked as static archives (see 3rdparty.pri),
+    # and are built straight from their in-tree build dirs, so no `install`.
     - name: build lz4
       run: |
         cd rdm/3rdparty/lz4/build/cmake
-        cmake -DLZ4_BUNDLED_MODE=ON -DBUILD_SHARED_LIBS=ON
+        cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DLZ4_BUNDLED_MODE=ON -DBUILD_SHARED_LIBS=OFF .
         ls
-        make -s -j 8
+        make -s -j$(sysctl -n hw.ncpu)
 
     - name: build zstd
       run: |
         cd rdm/3rdparty/zstd/build/cmake
-        cmake . && make
+        cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DZSTD_BUILD_SHARED=OFF . && make -s -j$(sysctl -n hw.ncpu)
 
     - name: build snappy
       run: |
         cd rdm/3rdparty/snappy
-        git submodule update --remote
-        cmake . && make
+        cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DSNAPPY_BUILD_TESTS=OFF -DSNAPPY_BUILD_BENCHMARKS=OFF . && make -s -j$(sysctl -n hw.ncpu)
 
     - name: build brotli
       run: |
         cd rdm/3rdparty/brotli
-        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
-        sudo cmake --build . --config Release --target install
-
-#     - name: setup python
-#       run: |
-#         brew unlink python@3.11
-#         brew unlink python@3.10
-#         brew reinstall python@3.9
-#         brew link --overwrite python@3.9
-#         brew link python3
-
-    # install QT   
-    - name: install QT
-      uses: jurplel/install-qt-action@v3
-      with: 
-        version: '5.15.1'
-        modules: 'qtcharts'
-        setup-python: 'false'
+        cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF .
+        make -s -j$(sysctl -n hw.ncpu)
 
     - name: copy info.plist
       run: |
         cd rdm
         cd ./src && cp ./resources/Info.plist.sample ./resources/Info.plist
 
-#     - name: setup python
-#       run: |
-#         brew unlink python@3.10
-#         brew install python@3.9
-#         brew link --overwrite python@3.9
-
-    # 使用私有库,egg-links时-t不能同时使用，--user解决权限问题
-    # https://github.com/UnitedIncome/serverless-python-requirements/issues/240
-    # https://github.com/pypa/pip/issues/4390
-    # https://github.com/pypa/pip/issues/4139
-    # https://github.com/pypa/pip/issues/562
-    # sudo pip3 install --prefix . -r $GITHUB_WORKSPACE/rdm/src/py/requirements.txt
-    # sudo pip3 install -t . -r $GITHUB_WORKSPACE/rdm/src/py/requirements.txt
     - name: pip install
       run: |
         cd rdm
@@ -294,12 +294,12 @@ jobs:
         cp -Rf $GITHUB_WORKSPACE/rdm/src/py .
         cd py
         echo six >> requirements.txt
-        sudo pip3 install -t . -r requirements.txt
-        sudo python3 -m compileall -b .
-        sudo find . -name "*.py" | sudo xargs rm -rf
-        sudo find . -name "__pycache__" | sudo xargs rm -rf
-        sudo find . -name "*.dist-info" | sudo xargs rm -rf
-        sudo find . -name "*.egg-info" | sudo xargs rm -rf
+        pip3 install -t . -r requirements.txt
+        python3 -m compileall -b .
+        find . -name "*.py" | xargs rm -rf
+        find . -name "__pycache__" | xargs rm -rf
+        find . -name "*.dist-info" | xargs rm -rf
+        find . -name "*.egg-info" | xargs rm -rf
 
     - name: release translations
       run: |
@@ -307,26 +307,23 @@ jobs:
         lupdate resp.pro
         lrelease -verbose resp.pro
 
-    # brew install tree && tree -a
-    # 去掉initUpdater不然报Please download new version of Redis Desktop Manager，不能使用
-    # sed -i '.back' 's/initUpdater();/\/\/initUpdater();/g' ./app/app.cpp
     # macdeployqt
     # https://doc.qt.io/qt-5/macos-deployment.html
-    # Qt Translations are not being copied
-    # https://github.com/probonopd/linuxdeployqt/issues/115
     - name: build
       id: build
       run: |
         cd rdm/src
-        qmake resp.pro CONFIG-=debug "VERSION=${{ env.VERSION }}"
-        make -s -j 8
+        qmake resp.pro CONFIG-=debug "VERSION=${{ env.VERSION }}" "QMAKE_MACOSX_DEPLOYMENT_TARGET=${{ env.MACOSX_DEPLOYMENT_TARGET }}"
+        make -s -j$(sysctl -n hw.ncpu)
 
     - name: copy translations
       run: |
         cd rdm/src
-        mkdir ../bin/osx/release/RESP.app/Contents/translations
+        mkdir -p ../bin/osx/release/RESP.app/Contents/translations
         cp -f ./resources/translations/*.qm ../bin/osx/release/RESP.app/Contents/translations
 
+    # Note: the DMG is created in a later step, after the app has been signed -
+    # `macdeployqt -dmg` would embed an unsigned app.
     - name: package
       id: package
       run: |
@@ -335,11 +332,37 @@ jobs:
         cp -Rf py ./RESP.app/Contents/Resources/
         python_version=$(python3 -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
         echo ${python_version}
-        brew install python@${python_version}
-        cp -Rf /usr/local/Cellar/python@${python_version}/*/Frameworks/ ./RESP.app/Contents/Frameworks/
-        install_name_tool -change /Library/Frameworks/Python.framework/Versions/${python_version}/Python @rpath/Python.framework/Versions/${python_version}/Python ./RESP.app/Contents/MacOS/RESP
+        python_framework_prefix=$(python3 -c "import sysconfig; print(sysconfig.get_config_var('PYTHONFRAMEWORKPREFIX') or '')")
+        test -n "${python_framework_prefix}" || { echo "python3 is not a framework build"; exit 1; }
+        mkdir -p ./RESP.app/Contents/Frameworks
+        cp -Rf "${python_framework_prefix}/Python.framework" ./RESP.app/Contents/Frameworks/
+        python_lib=$(otool -L ./RESP.app/Contents/MacOS/RESP | awk '/Python\.framework/ {print $1; exit}')
+        echo "rewriting ${python_lib}"
+        install_name_tool -change "${python_lib}" "@rpath/Python.framework/Versions/${python_version}/Python" ./RESP.app/Contents/MacOS/RESP
         otool -L ./RESP.app/Contents/MacOS/RESP
-        macdeployqt ./RESP.app -qmldir=../../../src/qml -always-overwrite -dmg
+        macdeployqt ./RESP.app -qmldir=../../../src/qml -always-overwrite
+
+    # Apple Silicon refuses to launch unsigned binaries, and both
+    # install_name_tool and macdeployqt invalidate the existing signature, so
+    # the bundle has to be signed again before it is shipped.
+    - name: codesign
+      run: |
+        cd rdm/bin/osx/release
+        test "$(lipo -archs RESP.app/Contents/MacOS/RESP)" = "arm64"
+        find RESP.app/Contents -type f -name "*.dylib" -print0 | xargs -0 -n1 codesign --force --sign -
+        find RESP.app/Contents -type d -name "*.framework" -print0 | xargs -0 -n1 codesign --force --sign -
+        codesign --force --sign - RESP.app
+        codesign -v RESP.app
+
+    - name: create dmg
+      run: |
+        cd rdm/bin/osx/release
+        rm -rf dmg-root && mkdir dmg-root
+        cp -R RESP.app dmg-root/RESP.app
+        ln -s /Applications dmg-root/Applications
+        hdiutil create -volname RESP -srcfolder dmg-root -ov -format UDZO RESP.dmg
+        lipo -info RESP.app/Contents/MacOS/RESP
+        codesign -v RESP.app
 
     - name: Upload Release Asset
       id: upload-release-asset 

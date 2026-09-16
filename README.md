@@ -1,4 +1,4 @@
-![CI for redis desktop manager](https://github.com/FuckDoctors/rdm-builder/workflows/CI%20for%20redis%20desktop%20manager/badge.svg)
+![CI for redis desktop manager](https://github.com/One-Piecs/rdm-builder/workflows/CI%20for%20redis%20desktop%20manager/badge.svg)
 
 # rdm-builder
 
@@ -17,9 +17,9 @@ Official Download: [https://resp.app](https://resp.app)
 
 ## Release & Pre-release
 
-- [windows](https://github.com/FuckDoctors/rdm-builder/releases)
-- [macOS](https://github.com/FuckDoctors/rdm-builder/releases)
-- [Pre-release](https://github.com/FuckDoctors/rdm-builder/releases/tag/2022-weekly) [___Weekly___] 🎉
+- [windows](https://github.com/One-Piecs/rdm-builder/releases)
+- [macOS](https://github.com/One-Piecs/rdm-builder/releases) (Apple Silicon / arm64)
+- [Pre-release](https://github.com/One-Piecs/rdm-builder/releases/tag/2022-weekly) [___Weekly___] 🎉
 
 ## Credits & 感谢
 
