@@ -7,9 +7,9 @@ name: CI for redis desktop manager
 
 # Manual trigger only: upstream code is frozen at the tip of the 2022 branch, so
 # there is nothing to pick up on a schedule or on every push. Start a run from
-# the Actions tab ("Run workflow") when a build is actually wanted - remember to
-# pick the pre-release branch in the "Use workflow from" dropdown (see the note
-# about the default branch in the README).
+# the Actions tab ("Run workflow") when a build is actually wanted. The default
+# branch of this repository is pre-release, so that button is available and it
+# runs against the right branch without any extra selection.
 #
 # The previous automatic triggers are kept below, commented out, in case builds
 # should go back to running automatically.

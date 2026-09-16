@@ -26,10 +26,10 @@ Official Download: [https://resp.app](https://resp.app)
 上游源码已经冻结（停在 `2022` 分支末端，2023-04），所以构建改为**手动触发**，不再定时运行。
 
 1. 打开 [Actions](https://github.com/One-Piecs/rdm-builder/actions) → `CI for redis desktop manager` → `Run workflow`
-2. 在 "Use workflow from" 下拉里选择 **pre-release** 分支
-3. 跑完后产物会更新到 [Pre-release](https://github.com/One-Piecs/rdm-builder/releases/tag/2022-weekly)
+2. 跑完后产物会更新到 [Pre-release](https://github.com/One-Piecs/rdm-builder/releases/tag/2022-weekly)
 
-> 注意：GitHub 只在**默认分支**上存在 `workflow_dispatch` 时才会显示 `Run workflow` 按钮，而本仓库默认分支目前是内容较旧的 `master`。若按钮不可见，把 Settings → General → Default branch 改成 `pre-release` 即可。
+> 默认分支就是 `pre-release`，`Run workflow` 会默认基于它运行，无需手动切换分支。
+> 一次构建约 10 分钟（Windows 与 macOS 两侧都会全量编译）。
 
 ## Credits & 感谢
 
