@@ -18,7 +18,9 @@ Official Download: [https://resp.app](https://resp.app)
 ## Release & Pre-release
 
 - [windows](https://github.com/One-Piecs/rdm-builder/releases)
-- [macOS](https://github.com/One-Piecs/rdm-builder/releases) (Apple Silicon / arm64，需 macOS 15 及以上)
+- [macOS](https://github.com/One-Piecs/rdm-builder/releases)（Apple Silicon / arm64，需 macOS 15 及以上），两种打包方式：
+  - `RESP.dmg` — 自带精简后的 Python 运行时，换任何一台 Mac 都能直接跑（推荐，约 50 MB）
+  - `RESP-nopython.dmg` — 不打包 Python，体积更小（约 30 MB），但**要求目标 Mac 已安装 Homebrew `python@3.14`**，否则无法启动
 - [Pre-release](https://github.com/One-Piecs/rdm-builder/releases/tag/2022-weekly) [___Weekly___] 🎉
 
 ## 构建方式

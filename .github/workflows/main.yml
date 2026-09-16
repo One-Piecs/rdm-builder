@@ -73,6 +73,8 @@ jobs:
             ${{ env.RDM_REF }}-weekly
 
             - macOS: Apple Silicon (arm64), requires macOS 15 or later
+              - `RESP.dmg` - self-contained, bundles a slimmed Python runtime (recommended)
+              - `RESP-nopython.dmg` - smaller, does not bundle Python; requires Homebrew `python@3.14` on the target Mac
           draft: false
           prerelease: true
 
@@ -340,16 +342,29 @@ jobs:
         mkdir -p ../bin/osx/release/RESP.app/Contents/translations
         cp -f ./resources/translations/*.qm ../bin/osx/release/RESP.app/Contents/translations
 
-    # Note: the DMG is created in a later step, after the app has been signed -
-    # `macdeployqt -dmg` would embed an unsigned app.
-    - name: package
-      id: package
+    # Two macOS builds are shipped from the same compiled app:
+    #   RESP.dmg          - self-contained, bundles a slimmed Python runtime
+    #   RESP-nopython.dmg - no Python inside, ~30 MB smaller download, but it
+    #                       only starts on a Mac that already has the Homebrew
+    #                       Python it was linked against.
+    # macdeployqt and install_name_tool edit the bundle in place, so each build
+    # starts from this untouched copy.
+    - name: keep pristine app
       run: |
+        rm -rf "$RUNNER_TEMP/RESP.pristine.app"
+        cp -R rdm/bin/osx/release/RESP.app "$RUNNER_TEMP/RESP.pristine.app"
+        otool -L "$RUNNER_TEMP/RESP.pristine.app/Contents/MacOS/RESP" | grep -i python
+
+    # Note: the DMG is created here, after the app has been signed -
+    # `macdeployqt -dmg` would embed an unsigned app.
+    - name: package self-contained dmg
+      run: |
+        set -euo pipefail
         cd rdm/bin/osx/release
-        zip -q -r release.zip .
+        rm -rf RESP.app && cp -R "$RUNNER_TEMP/RESP.pristine.app" RESP.app
         cp -Rf py ./RESP.app/Contents/Resources/
+
         python_version=$(python3 -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
-        echo ${python_version}
         python_framework_prefix=$(python3 -c "import sysconfig; print(sysconfig.get_config_var('PYTHONFRAMEWORKPREFIX') or '')")
         test -n "${python_framework_prefix}" || { echo "python3 is not a framework build"; exit 1; }
         mkdir -p ./RESP.app/Contents/Frameworks
@@ -357,33 +372,82 @@ jobs:
         python_lib=$(otool -L ./RESP.app/Contents/MacOS/RESP | awk '/Python\.framework/ {print $1; exit}')
         echo "rewriting ${python_lib}"
         install_name_tool -change "${python_lib}" "@rpath/Python.framework/Versions/${python_version}/Python" ./RESP.app/Contents/MacOS/RESP
-        otool -L ./RESP.app/Contents/MacOS/RESP
-        macdeployqt ./RESP.app -qmldir=../../../src/qml -always-overwrite
 
-    # Apple Silicon refuses to launch unsigned binaries, and both
-    # install_name_tool and macdeployqt invalidate the existing signature, so
-    # the bundle has to be signed again before it is shipped.
-    - name: codesign
-      run: |
-        cd rdm/bin/osx/release
+        # An embedded runtime never needs the CPython test suite (~36 MB),
+        # headers, man pages, IDLE or the pip bootstrapper.
+        framework="./RESP.app/Contents/Frameworks/Python.framework/Versions/${python_version}"
+        echo "python framework before: $(du -sh "${framework}" | cut -f1)"
+        rm -rf "${framework}/lib/python${python_version}/test" \
+               "${framework}/lib/python${python_version}/idlelib" \
+               "${framework}/lib/python${python_version}/ensurepip" \
+               "${framework}/lib/python${python_version}/turtledemo" \
+               "${framework}/lib/python${python_version}/lib2to3" \
+               "${framework}/lib/python${python_version}/tkinter" \
+               "${framework}/lib/python${python_version}/pydoc_data" \
+               "${framework}/lib/python${python_version}/config-${python_version}-darwin" \
+               "${framework}/include" "${framework}/share" "${framework}/bin"
+        echo "python framework after:  $(du -sh "${framework}" | cut -f1)"
+
+        macdeployqt ./RESP.app -qmldir=../../../src/qml -always-overwrite
+        otool -L ./RESP.app/Contents/MacOS/RESP | grep -i python
+
+        # Apple Silicon refuses to launch unsigned binaries, and both
+        # install_name_tool and macdeployqt invalidate the existing signature.
         test "$(lipo -archs RESP.app/Contents/MacOS/RESP)" = "arm64"
         find RESP.app/Contents -type f -name "*.dylib" -print0 | xargs -0 -n1 codesign --force --sign -
         find RESP.app/Contents -type d -name "*.framework" -print0 | xargs -0 -n1 codesign --force --sign -
         codesign --force --sign - RESP.app
         codesign -v RESP.app
 
-    - name: create dmg
-      run: |
-        cd rdm/bin/osx/release
         rm -rf dmg-root && mkdir dmg-root
         cp -R RESP.app dmg-root/RESP.app
         ln -s /Applications dmg-root/Applications
         hdiutil create -volname RESP -srcfolder dmg-root -ov -format UDZO RESP.dmg
-        lipo -info RESP.app/Contents/MacOS/RESP
+        ls -lh RESP.dmg
+
+    - name: package dmg without python
+      run: |
+        set -euo pipefail
+        cd rdm/bin/osx/release
+        original_python_lib=$(otool -L "$RUNNER_TEMP/RESP.pristine.app/Contents/MacOS/RESP" | awk '/Python\.framework/ {print $1; exit}')
+        echo "this build will require: ${original_python_lib}"
+
+        rm -rf RESP.app && cp -R "$RUNNER_TEMP/RESP.pristine.app" RESP.app
+        cp -Rf py ./RESP.app/Contents/Resources/
+
+        # macdeployqt aborts as soon as it cannot resolve a dependency (which
+        # leaves the bundle without plugins at all), so let it see the framework
+        # first and remove it again afterwards.
+        python_version=$(python3 -c "import sys; print('.'.join(map(str, sys.version_info[:2])))")
+        python_framework_prefix=$(python3 -c "import sysconfig; print(sysconfig.get_config_var('PYTHONFRAMEWORKPREFIX') or '')")
+        mkdir -p ./RESP.app/Contents/Frameworks
+        cp -Rf "${python_framework_prefix}/Python.framework" ./RESP.app/Contents/Frameworks/
+        python_lib=$(otool -L ./RESP.app/Contents/MacOS/RESP | awk '/Python\.framework/ {print $1; exit}')
+        install_name_tool -change "${python_lib}" "@rpath/Python.framework/Versions/${python_version}/Python" ./RESP.app/Contents/MacOS/RESP
+
+        macdeployqt ./RESP.app -qmldir=../../../src/qml -always-overwrite
+        test "$(ls RESP.app/Contents/PlugIns | wc -l)" -gt 0
+
+        rm -rf ./RESP.app/Contents/Frameworks/Python.framework
+        bundled_python_lib=$(otool -L ./RESP.app/Contents/MacOS/RESP | awk '/Python\.framework/ {print $1; exit}')
+        install_name_tool -change "${bundled_python_lib}" "${original_python_lib}" ./RESP.app/Contents/MacOS/RESP
+        otool -L ./RESP.app/Contents/MacOS/RESP | grep -i python
+        test ! -e ./RESP.app/Contents/Frameworks/Python.framework
+
+        test "$(lipo -archs RESP.app/Contents/MacOS/RESP)" = "arm64"
+        find RESP.app/Contents -type f -name "*.dylib" -print0 | xargs -0 -n1 codesign --force --sign -
+        find RESP.app/Contents -type d -name "*.framework" -print0 | xargs -0 -n1 codesign --force --sign -
+        codesign --force --sign - RESP.app
         codesign -v RESP.app
 
-    - name: Upload Release Asset
-      id: upload-release-asset 
+        rm -rf dmg-root && mkdir dmg-root
+        cp -R RESP.app dmg-root/RESP.app
+        ln -s /Applications dmg-root/Applications
+        hdiutil create -volname RESP -srcfolder dmg-root -ov -format UDZO RESP-nopython.dmg
+        ls -lh RESP-nopython.dmg
+
+    - name: Upload self-contained dmg
+      id: upload-release-asset
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -391,4 +455,15 @@ jobs:
         upload_url: ${{ needs.create_release.outputs.upload_url }}
         asset_path: rdm/bin/osx/release/RESP.dmg
         asset_name: RESP.dmg
+        asset_content_type: application/dmg
+
+    - name: Upload no-python dmg
+      id: upload-release-asset-nopython
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: rdm/bin/osx/release/RESP-nopython.dmg
+        asset_name: RESP-nopython.dmg
         asset_content_type: application/dmg
