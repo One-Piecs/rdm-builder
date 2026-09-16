@@ -5,28 +5,29 @@
 # This is a basic workflow to help you get started with Actions
 name: CI for redis desktop manager
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the pre-release branch.
+# Manual trigger only: upstream code is frozen at the tip of the 2022 branch, so
+# there is nothing to pick up on a schedule or on every push. Start a run from
+# the Actions tab ("Run workflow") when a build is actually wanted - remember to
+# pick the pre-release branch in the "Use workflow from" dropdown (see the note
+# about the default branch in the README).
+#
+# The previous automatic triggers are kept below, commented out, in case builds
+# should go back to running automatically.
 on:
-  push:
-    branches: [ pre-release ]
-    paths-ignore: 
-      - 'README.md'
-      - 'LICENSE'
-  pull_request:
-    branches: [ pre-release ]
-    paths-ignore: 
-      - 'README.md'
-      - 'LICENSE'
-  # The weekly scheduled build is disabled: upstream code is frozen at the tip
-  # of the 2022 branch, so there is nothing new to pick up. Uncomment the block
-  # below (and drop workflow_dispatch) to bring the schedule back.
+  workflow_dispatch:
+  # push:
+  #   branches: [ pre-release ]
+  #   paths-ignore: 
+  #     - 'README.md'
+  #     - 'LICENSE'
+  # pull_request:
+  #   branches: [ pre-release ]
+  #   paths-ignore: 
+  #     - 'README.md'
+  #     - 'LICENSE'
   # schedule:
   #   # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule
   #   - cron: '0 22 * * 6' # Runs at 22:00 UTC every saturday
-  #
-  # Build on demand from the Actions tab instead.
-  workflow_dispatch:
 
 env:
   RDM_REF: 2022
