@@ -79,7 +79,7 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
       with:
-        repository: uglide/RedisDesktopManager
+        repository: redis/RedisDesktopManager
         path: rdm
         submodules: 'recursive'
         ref: ${{ env.RDM_REF }}
@@ -237,7 +237,7 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
       with:
-        repository: uglide/RedisDesktopManager
+        repository: redis/RedisDesktopManager
         path: rdm
         submodules: 'recursive'
         ref: ${{ env.RDM_REF }}
