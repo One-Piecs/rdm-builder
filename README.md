@@ -18,7 +18,7 @@ Official Download: [https://resp.app](https://resp.app)
 ## Release & Pre-release
 
 - [windows](https://github.com/One-Piecs/rdm-builder/releases)
-- [macOS](https://github.com/One-Piecs/rdm-builder/releases) (Apple Silicon / arm64)
+- [macOS](https://github.com/One-Piecs/rdm-builder/releases) (Apple Silicon / arm64，需 macOS 15 及以上)
 - [Pre-release](https://github.com/One-Piecs/rdm-builder/releases/tag/2022-weekly) [___Weekly___] 🎉
 
 ## Credits & 感谢

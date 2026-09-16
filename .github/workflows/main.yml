@@ -28,7 +28,7 @@ env:
   VERSION: 2022.99.0
   PY_LIB_VERSION: 38
   PYTHON_EMBEDDED_VERSION: 3.8.10
-  CMAKE_VS: Visual Studio 16 2019
+  CMAKE_VS: Visual Studio 17 2022
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -65,12 +65,14 @@ jobs:
           release_name: v${{ env.RDM_REF }}-weekly
           body: |
             ${{ env.RDM_REF }}-weekly
+
+            - macOS: Apple Silicon (arm64), requires macOS 15 or later
           draft: false
           prerelease: true
 
   build_on_windows:
     needs: create_release
-    runs-on: windows-2019
+    runs-on: windows-2022
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -84,15 +86,11 @@ jobs:
 
     # install QT   
     - name: install QT
-      uses: jurplel/install-qt-action@v2
+      uses: jurplel/install-qt-action@v4
       with: 
         version: '5.15.1'
+        arch: 'win64_msvc2019_64'
         modules: 'qtcharts'
-
-#     - name : fix compilation
-#       run: |
-#         cd rdm/3rdparty/qredisclient/3rdparty/hiredis
-#         git apply ../hiredis-win.patch
 
     - name: install zlib
       run: |
@@ -132,6 +130,15 @@ jobs:
 #        python-version: '3.7'
 #        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
 
+    # The app embeds Python 3.8 (python38.dll), so the bundled .pyc files and
+    # the linked python38.lib have to be produced by 3.8 as well. windows-2022
+    # no longer ships 3.8 in its tool cache, hence the explicit install.
+    - name: setup python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '${{ env.PYTHON_EMBEDDED_VERSION }}'
+        architecture: 'x64'
+
     # install python3
     - name: install python3
       shell: cmd
@@ -169,7 +176,7 @@ jobs:
       run: |
         python rdm\build\utils\set_version.py ${{ env.VERSION }} > rdm\src\version.h
         cd rdm\src
-        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" %vc_arch%
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" %vc_arch%
         qmake resp.pro CONFIG-=debug "VERSION=${{ env.VERSION }}"
         nmake
 
@@ -181,7 +188,7 @@ jobs:
 #        PYTHON_EMBEDDED_VERSION: ${{ env.PYTHON_EMBEDDED_VERSION }}
       run: |
         cd rdm\build\windows\installer\resources
-        wget "https://www.python.org/ftp/python/${{ env.PYTHON_EMBEDDED_VERSION }}/python-${{ env.PYTHON_EMBEDDED_VERSION }}-embed-amd64.zip" -outfile "python-embed.zip"
+        Invoke-WebRequest -Uri "https://www.python.org/ftp/python/${{ env.PYTHON_EMBEDDED_VERSION }}/python-${{ env.PYTHON_EMBEDDED_VERSION }}-embed-amd64.zip" -OutFile "python-embed.zip"
         7z.exe x python-embed.zip python${{ env.PY_LIB_VERSION }}.zip python3.dll python${{ env.PY_LIB_VERSION }}.dll unicodedata.pyd _bz2.pyd
         del python-embed.zip
 
@@ -221,8 +228,9 @@ jobs:
     env:
       HOMEBREW_NO_AUTO_UPDATE: 1
       HOMEBREW_NO_INSTALL_CLEANUP: 1
-      # macOS 11.0 is the first release that runs on Apple Silicon.
-      MACOSX_DEPLOYMENT_TARGET: "11.0"
+      # The embedded Python runtime (taken from the runner's Homebrew) requires
+      # macOS 15, so that is the real floor of the produced app.
+      MACOSX_DEPLOYMENT_TARGET: "15.0"
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -284,8 +292,12 @@ jobs:
 
     - name: copy info.plist
       run: |
-        cd rdm
-        cd ./src && cp ./resources/Info.plist.sample ./resources/Info.plist
+        cd rdm/src/resources
+        cp ./Info.plist.sample ./Info.plist
+        # Declare the real minimum so macOS refuses to start the app with a
+        # readable message instead of a dyld error.
+        /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion ${MACOSX_DEPLOYMENT_TARGET}" ./Info.plist
+        /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" ./Info.plist
 
     - name: pip install
       run: |
