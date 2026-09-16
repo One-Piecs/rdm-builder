@@ -70,11 +70,15 @@ jobs:
           tag_name: ${{ env.RDM_REF }}-weekly
           release_name: v${{ env.RDM_REF }}-weekly
           body: |
-            ${{ env.RDM_REF }}-weekly
+            ${{ env.RDM_REF }}-weekly (app ${{ env.VERSION }})
 
-            - macOS: Apple Silicon (arm64), requires macOS 15 or later
-              - `RESP.dmg` - self-contained, bundles a slimmed Python runtime (recommended)
-              - `RESP-nopython.dmg` - smaller, does not bundle Python; requires Homebrew `python@3.14` on the target Mac
+            Source: [redis/RedisDesktopManager](https://github.com/redis/RedisDesktopManager) branch `${{ env.RDM_REF }}`
+
+            | Asset | Platform | Requires | Size |
+            | --- | --- | --- | --- |
+            | `resp-${{ env.VERSION }}.exe` | Windows x64 | - | ~20 MB |
+            | `RESP.dmg` | macOS arm64, macOS 15+ | - (bundles a slimmed Python runtime) | ~46 MB |
+            | `RESP-nopython.dmg` | macOS arm64, macOS 15+ | Homebrew `python@3.14` | ~29 MB |
           draft: false
           prerelease: true
 

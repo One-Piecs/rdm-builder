@@ -17,11 +17,24 @@ Official Download: [https://resp.app](https://resp.app)
 
 ## Release & Pre-release
 
-- [windows](https://github.com/One-Piecs/rdm-builder/releases)
-- [macOS](https://github.com/One-Piecs/rdm-builder/releases)（Apple Silicon / arm64，需 macOS 15 及以上），两种打包方式：
-  - `RESP.dmg` — 自带精简后的 Python 运行时，换任何一台 Mac 都能直接跑（推荐，约 50 MB）
-  - `RESP-nopython.dmg` — 不打包 Python，体积更小（约 30 MB），但**要求目标 Mac 已安装 Homebrew `python@3.14`**，否则无法启动
+- [Windows 版](https://github.com/One-Piecs/rdm-builder/releases)
+- [macOS 版](https://github.com/One-Piecs/rdm-builder/releases)（Apple Silicon / arm64）
 - [Pre-release](https://github.com/One-Piecs/rdm-builder/releases/tag/2022-weekly) [___Weekly___] 🎉
+
+## 版本说明
+
+预发布标签固定为 `2022-weekly`，每次构建直接覆盖更新，不新增版本号。
+
+| 产物 | 平台 / 架构 | 系统要求 | 额外依赖 | 体积 |
+| --- | --- | --- | --- | --- |
+| `resp-2022.99.0.exe` | Windows x64 | Windows | 无 | 约 20 MB |
+| `RESP.dmg` | macOS arm64 | macOS 15 及以上 | 无（自带精简后的 Python 运行时） | 约 46 MB |
+| `RESP-nopython.dmg` | macOS arm64 | macOS 15 及以上 | 需先安装 Homebrew `python@3.14`（Apple Silicon 版 Homebrew） | 约 29 MB |
+
+- **该下哪个**：Mac 用户直接用 `RESP.dmg`，开箱即用。只有本机已经用 Homebrew 装了 `python@3.14` 的，才建议选 `RESP-nopython.dmg` 省下那 17 MB——缺少该 Python 时程序会直接启动失败。
+- **源码**：上游 [redis/RedisDesktopManager](https://github.com/redis/RedisDesktopManager) 的 `2022` 分支（末端提交 `15f6d855`，2023-04-18）
+- **应用版本号**：`2022.99.0`，表示 2022 线的最新开发态；上游最后一个 tag 是 `2022.5.1`（2023-03-01）
+- **架构**：macOS 仅提供 arm64（Intel 版已停更，macOS 后续版本也不再支持 x86_64 应用）；Windows 为 x64
 
 ## 构建方式
 
