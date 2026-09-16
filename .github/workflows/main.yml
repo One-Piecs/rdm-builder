@@ -309,7 +309,13 @@ jobs:
         # Declare the real minimum so macOS refuses to start the app with a
         # readable message instead of a dyld error.
         /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion ${MACOSX_DEPLOYMENT_TARGET}" ./Info.plist
+        # The sample ships 0.0.0, which is what Finder and "Get Info" would
+        # report, while the app itself reports $VERSION.
+        /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION}" ./Info.plist
+        /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${VERSION}" ./Info.plist
         /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" ./Info.plist
+        /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" ./Info.plist
+        /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ./Info.plist
 
     - name: pip install
       run: |
