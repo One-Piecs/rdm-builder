@@ -558,16 +558,198 @@ index 6014114..e2edfd0 100644
  
  Item {
 diff --git a/src/qml/common/LegacyTableView.qml b/src/qml/common/LegacyTableView.qml
-index 820762e..6f9a42a 100644
+index 820762e..e80722e 100644
 --- a/src/qml/common/LegacyTableView.qml
 +++ b/src/qml/common/LegacyTableView.qml
-@@ -1,5 +1,4 @@
+@@ -1,10 +1,180 @@
 -import QtQuick 2.0
 -import QtQuick.Controls 1.4 as LC
+-import "./platformutils.js" as PlatformUtils
+-
+-LC.TableView {
+-    rowDelegate: Rectangle {
+-        height: 30
+-        color: styleData.selected ? sysPalette.highlight : styleData.alternate? sysPalette.alternateBase : "transparent"
 +import QtQuick
- import "./platformutils.js" as PlatformUtils
- 
- LC.TableView {
++import QtQuick.Controls
++import "."
++
++/**
++  * Simple read-only table built on plain Qt Quick primitives.
++  *
++  * Qt 6 removed Qt Quick Controls 1 (and with it the old TableView /
++  * TableViewColumn pair), so this replaces the previous wrapper. Columns are
++  * declared as an array of descriptors instead of child objects:
++  *
++  *   LegacyTableView {
++  *       model: someListModel
++  *       columns: [
++  *           { role: "name",  title: qsTranslate("RESP", "Name"),  width: 200 },
++  *           { role: "value", title: qsTranslate("RESP", "Value"), width: 300,
++  *             formatter: function(value, row) { return value.toUpperCase() } }
++  *       ]
++  *   }
++  *
++  * A column may also provide a "delegate" Component for a custom cell; the
++  * component receives "cellValue" and "rowData" properties.
++  */
++Item {
++    id: root
++
++    property var model: []
++    property var columns: []
++    property int rowHeight: 30
++    property int headerHeight: 30
++    property bool headerVisible: true
++    property int currentRow: -1
++
++    readonly property int rowCount: list.count
++
++    implicitWidth: 200
++    implicitHeight: 100
++
++    function _columnWidth(column) {
++        return column && column.width ? column.width : 100
++    }
++
++    function _cellText(column, value, rowData) {
++        if (value === undefined || value === null)
++            return ""
++
++        if (column.formatter)
++            return column.formatter(value, rowData)
++
++        return "" + value
++    }
++
++    Rectangle {
++        id: header
++
++        visible: root.headerVisible
++        anchors.top: parent.top
++        anchors.left: parent.left
++        anchors.right: parent.right
++        height: root.headerVisible ? root.headerHeight : 0
++        color: sysPalette.button
++
++        Row {
++            anchors.fill: parent
++
++            Repeater {
++                model: root.columns
++
++                Rectangle {
++                    width: root._columnWidth(modelData)
++                    height: header.height
++                    color: sysPalette.button
++                    border.color: sysPalette.mid
++                    border.width: 1
++
++                    BetterLabel {
++                        anchors.fill: parent
++                        anchors.leftMargin: 5
++                        anchors.rightMargin: 5
++                        verticalAlignment: Text.AlignVCenter
++                        elide: Text.ElideRight
++                        text: modelData.title ? modelData.title : ""
++                    }
++                }
++            }
++        }
++    }
++
++    ListView {
++        id: list
++
++        anchors.top: header.visible ? header.bottom : parent.top
++        anchors.left: parent.left
++        anchors.right: parent.right
++        anchors.bottom: parent.bottom
++
++        clip: true
++        model: root.model
++
++        delegate: Item {
++            id: rowItem
++
++            width: list.width
++            height: root.rowHeight
++
++            // A JS array model hands over the row object as modelData, while an
++            // QAbstractItemModel exposes its roles on the delegate's model.
++            property var rowModel: model
++            property var rowData: (modelData !== undefined && modelData !== null
++                                   && typeof modelData === "object") ? modelData : null
++            property int rowIndex: index
++            property bool isCurrent: root.currentRow === index
++
++            Rectangle {
++                anchors.fill: parent
++                color: rowItem.isCurrent ? sysPalette.highlight
++                                         : (index % 2 ? sysPalette.alternateBase : "transparent")
++            }
++
++            Row {
++                anchors.fill: parent
++
++                Repeater {
++                    model: root.columns
++
++                    Item {
++                        id: cell
++
++                        width: root._columnWidth(modelData)
++                        height: rowItem.height
++
++                        property var columnDefinition: modelData
++                        property var cellValue: {
++                            if (rowItem.rowData)
++                                return rowItem.rowData[modelData.role]
++
++                            var rowModel = rowItem.rowModel
++                            return rowModel ? rowModel[modelData.role] : undefined
++                        }
++
++                        Loader {
++                            anchors.fill: parent
++                            sourceComponent: cell.columnDefinition.delegate
++
++                            onLoaded: {
++                                if (item) {
++                                    if (item.hasOwnProperty("cellValue"))
++                                        item.cellValue = cell.cellValue
++                                    if (item.hasOwnProperty("rowData"))
++                                        item.rowData = rowItem.rowData
++                                    if (item.hasOwnProperty("rowIndex"))
++                                        item.rowIndex = rowItem.rowIndex
++                                    if (item.hasOwnProperty("columnRole"))
++                                        item.columnRole = cell.columnDefinition.role
++                                }
++                            }
++                        }
++
++                        BetterLabel {
++                            anchors.fill: parent
++                            anchors.leftMargin: 5
++                            anchors.rightMargin: 5
++                            verticalAlignment: Text.AlignVCenter
++                            elide: cell.columnDefinition.elideMode !== undefined
++                                   ? cell.columnDefinition.elideMode : Text.ElideRight
++                            visible: !cell.columnDefinition.delegate
++                            text: root._cellText(cell.columnDefinition, cell.cellValue, rowItem.rowData)
++                        }
++
++                        MouseArea {
++                            anchors.fill: parent
++                            enabled: cell.columnDefinition.delegate === undefined
++                            onClicked: root.currentRow = rowItem.rowIndex
++                        }
++                    }
++                }
++            }
++        }
+     }
+ }
 diff --git a/src/qml/common/NewTextArea.qml b/src/qml/common/NewTextArea.qml
 index 05f519e..9b8f49d 100644
 --- a/src/qml/common/NewTextArea.qml
@@ -1122,16 +1304,35 @@ index 79747e8..64cd816 100644
  import "../common/platformutils.js" as PlatformUtils
  
 diff --git a/src/qml/console/BaseConsole.qml b/src/qml/console/BaseConsole.qml
-index 64f93eb..0977206 100644
+index 64f93eb..dcc9622 100644
 --- a/src/qml/console/BaseConsole.qml
 +++ b/src/qml/console/BaseConsole.qml
-@@ -1,5 +1,4 @@
+@@ -1,9 +1,23 @@
 -import QtQuick 2.0
 -import QtQuick.Controls 1.4
 +import QtQuick
++import QtQuick.Controls
  
  TextArea {
      id: root
+ 
++    // Qt 6's TextArea has neither of these; RDM relied on the Controls 1 ones.
++    property bool backgroundVisible: true
++    property color textColor: sysPalette.text
++
++    color: textColor
++    background: backgroundVisible ? consoleBackground : null
++
++    Rectangle {
++        id: consoleBackground
++        anchors.fill: parent
++        color: "transparent"
++        border.color: sysPalette.mid
++    }
++
+     function clear() {
+         text = ""
+     }
 diff --git a/src/qml/console/Consoles.qml b/src/qml/console/Consoles.qml
 index 920cee7..193984c 100644
 --- a/src/qml/console/Consoles.qml
@@ -1150,18 +1351,123 @@ index 920cee7..193984c 100644
  import "./../common/platformutils.js" as PlatformUtils
  
 diff --git a/src/qml/console/RedisConsole.qml b/src/qml/console/RedisConsole.qml
-index 085b08b..9cf7ee9 100644
+index 085b08b..422b6c9 100644
 --- a/src/qml/console/RedisConsole.qml
 +++ b/src/qml/console/RedisConsole.qml
-@@ -1,6 +1,5 @@
+@@ -1,6 +1,6 @@
 -import QtQuick 2.3
 -import QtQuick.Controls 1.4
 -import QtQuick.Layouts 1.1
 +import QtQuick
 +import QtQuick.Layouts
++import QtQuick.Controls
  import "../common"
  import "../common/platformutils.js" as PlatformUtils
  import "."
+@@ -67,7 +67,6 @@ Rectangle {
+         textColor: "yellow"
+         readOnly: root.promptLength == 0 || blockAllInput
+         textFormat: TextEdit.RichText
+-        menu: null
+ 
+         property bool blockAllInput: false
+         property int commandStartPos: root.promptPosition + root.promptLength
+@@ -191,7 +190,8 @@ Rectangle {
+ 
+             MenuItem {
+                 text: qsTranslate("RESP","Clear")
+-                iconSource: PlatformUtils.getThemeIcon("cleanup.svg")
++                // Controls 2 menu items take the icon through icon.source
++                icon.source: PlatformUtils.getThemeIcon("cleanup.svg")
+                 onTriggered: {
+                     root.clear()
+                     root.displayPrompt()
+@@ -214,7 +214,7 @@ Rectangle {
+                     && textArea.cursorPosition >= textArea.commandStartPos
+         }
+ 
+-        TableView {
++        LegacyTableView {
+             id: cmdAutocomplete            
+ 
+             Layout.fillWidth: true
+@@ -222,57 +222,46 @@ Rectangle {
+ 
+             model: autocompleteModel
+ 
+-            headerVisible: true
+-
+-            TableViewColumn {
+-                title: "Command"
+-                role: "name"
+-                width: 120
+-            }
+-
+-            TableViewColumn {
+-                title: qsTranslate("RESP","Arguments")
+-                role: "arguments"
+-                width: 250
+-            }
++            columns: [
++                { role: "name", title: "Command", width: 120, delegate: autocompleteCell },
++                { role: "arguments", title: qsTranslate("RESP","Arguments"), width: 250, delegate: autocompleteCell },
++                { role: "summary", title: qsTranslate("RESP","Description"), width: 350, delegate: autocompleteCell },
++                { role: "since", title: qsTranslate("RESP","Available since"), width: 60, delegate: autocompleteCell }
++            ]
++        }
+ 
+-            TableViewColumn {
+-                title: qsTranslate("RESP","Description")
+-                role: "summary"
+-                width: 350
+-            }
++        Component {
++            id: autocompleteCell
+ 
+-            TableViewColumn {
+-                title: qsTranslate("RESP","Available since")
+-                role: "since"
+-                width: 60
+-            }
++            Item {
++                property var cellValue
++                property int rowIndex
++                property string columnRole
+ 
+-            itemDelegate: Item {
+                 Text {
+                     anchors.fill: parent
+-                    color: styleData.textColor
+-                    elide: styleData.elideMode
+-                    text: styleData.value
++                    color: sysPalette.text
++                    elide: Text.ElideRight
++                    text: cellValue !== undefined ? "" + cellValue : ""
+                     wrapMode: Text.WrapAnywhere
+                     maximumLineCount: 1
+                 }
+ 
+                 MouseArea {
+-                    enabled: styleData.column === 2 || styleData.column === 0
++                    enabled: columnRole === "summary" || columnRole === "name"
+                     anchors.fill: parent
+                     cursorShape: Qt.PointingHandCursor
+                     onClicked: {
+                         var commandName = "#"
+                         try {
+                             commandName = consoleAutocompleteModel.getRow(
+-                                        autocompleteModel.getOriginalRowIndex(styleData.row)
++                                        autocompleteModel.getOriginalRowIndex(rowIndex)
+                             )["name"]
+                         } catch(err) {
+                             console.log("Cannot get command name:", err)
+                         }
+ 
+-                        if (styleData.column === 2) {
++                        if (columnRole === "summary") {
+                             Qt.openUrlExternally("https://redis.io/commands/" + commandName)
+                         } else {
+                             textArea.remove(textArea.commandStartPos, textArea.cursorPosition)
 diff --git a/src/qml/dummy.qml b/src/qml/dummy.qml
 index 7ba5e1c..5500d7a 100644
 --- a/src/qml/dummy.qml
@@ -1176,7 +1482,7 @@ index 7ba5e1c..5500d7a 100644
  
  Item { }
 diff --git a/src/qml/extension-server/ExtensionServerSettings.qml b/src/qml/extension-server/ExtensionServerSettings.qml
-index ec0adde..9ca3f92 100644
+index ec0adde..5ee3852 100644
 --- a/src/qml/extension-server/ExtensionServerSettings.qml
 +++ b/src/qml/extension-server/ExtensionServerSettings.qml
 @@ -1,9 +1,8 @@
@@ -1194,6 +1500,47 @@ index ec0adde..9ca3f92 100644
  import "../common"
  import "../settings"
  import "../common/platformutils.js" as PlatformUtils
+@@ -121,33 +120,20 @@ BetterDialog {
+                         }
+                     }
+ 
+-                    LC.TableView {
++                    LegacyTableView {
+                         id: formattersTable
+ 
+                         Layout.fillWidth: true
+                         Layout.fillHeight: true
+                         Layout.preferredHeight: 100
+-                        verticalScrollBarPolicy: Qt.ScrollBarAlwaysOn
+-
+-                        LC.TableViewColumn {
+-                            role: "id"
+-                            width: 75
+-                            title: qsTranslate("RESP","Id")
+-                        }
+-
+-                        LC.TableViewColumn {
+-                            width: 250
+-                            role: "name"
+-                            title: qsTranslate("RESP","Name")
+-                        }
+-
+-                        LC.TableViewColumn {
+-                            width: 75
+-                            role: "readOnly"
+-                            title: qsTranslate("RESP","Read Only")
+-                        }
+ 
+                         model: formattersManager
++
++                        columns: [
++                            { role: "id", width: 75, title: qsTranslate("RESP","Id") },
++                            { role: "name", width: 250, title: qsTranslate("RESP","Name") },
++                            { role: "readOnly", width: 75, title: qsTranslate("RESP","Read Only") }
++                        ]
+                     }
+ 
+                     Item {
 diff --git a/src/qml/qml.qrc b/src/qml/qml.qrc
 index 75a869e..16cc3d5 100644
 --- a/src/qml/qml.qrc
@@ -1257,7 +1604,7 @@ index 022fda4..1adaf36 100644
  import "./../common/platformutils.js" as PlatformUtils
  import "./../settings"
 diff --git a/src/qml/server-actions/ServerClients.qml b/src/qml/server-actions/ServerClients.qml
-index 57c8b21..e30bcbf 100644
+index 57c8b21..a74402d 100644
 --- a/src/qml/server-actions/ServerClients.qml
 +++ b/src/qml/server-actions/ServerClients.qml
 @@ -1,10 +1,9 @@
@@ -1277,8 +1624,51 @@ index 57c8b21..e30bcbf 100644
  import "./../common"
  import "./../common/platformutils.js" as PlatformUtils
  import "./../settings"
+@@ -46,35 +45,13 @@ ServerAction {
+ 
+             model: tab.model.clients ? tab.model.clients : []
+ 
+-            LC.TableViewColumn {
+-                role: "addr"
+-                title: qsTranslate("RESP","Client Address")
+-                width: 200
+-            }
+-
+-            LC.TableViewColumn {
+-                role: "age"
+-                title: qsTranslate("RESP","Age (sec)")
+-                width: 75
+-            }
+-
+-            LC.TableViewColumn {
+-                role: "idle"
+-                title: qsTranslate("RESP","Idle")
+-                width: 75
+-            }
+-
+-            LC.TableViewColumn {
+-                role: "flags"
+-                title: qsTranslate("RESP","Flags")
+-                width: 75
+-            }
+-
+-            LC.TableViewColumn {
+-                role: "db"
+-                title: qsTranslate("RESP","Current Database")
+-                width: 120
+-            }
++            columns: [
++                { role: "addr", title: qsTranslate("RESP","Client Address"), width: 200 },
++                { role: "age", title: qsTranslate("RESP","Age (sec)"), width: 75 },
++                { role: "idle", title: qsTranslate("RESP","Idle"), width: 75 },
++                { role: "flags", title: qsTranslate("RESP","Flags"), width: 75 },
++                { role: "db", title: qsTranslate("RESP","Current Database"), width: 120 }
++            ]
+         }
+     }
+ }
 diff --git a/src/qml/server-actions/ServerConfig.qml b/src/qml/server-actions/ServerConfig.qml
-index d869006..e0ed5d3 100644
+index d869006..fab738e 100644
 --- a/src/qml/server-actions/ServerConfig.qml
 +++ b/src/qml/server-actions/ServerConfig.qml
 @@ -1,9 +1,8 @@
@@ -1296,8 +1686,30 @@ index d869006..e0ed5d3 100644
  import "./../common"
  import "./../common/platformutils.js" as PlatformUtils
  import "./../settings"
+@@ -61,17 +60,10 @@ ServerAction {
+ 
+                     model: modelData['section_data']
+ 
+-                    LC.TableViewColumn {
+-                        role: "name"
+-                        title: qsTranslate("RESP","Property")
+-                        width: 250
+-                    }
+-
+-                    LC.TableViewColumn {
+-                        role: "value"
+-                        title: qsTranslate("RESP","Value")
+-                        width: 350
+-                    }
++                    columns: [
++                        { role: "name", title: qsTranslate("RESP","Property"), width: 250 },
++                        { role: "value", title: qsTranslate("RESP","Value"), width: 350 }
++                    ]
+                 }
+ 
+             }
 diff --git a/src/qml/server-actions/ServerPubSub.qml b/src/qml/server-actions/ServerPubSub.qml
-index 13d688e..caededf 100644
+index 13d688e..217b72d 100644
 --- a/src/qml/server-actions/ServerPubSub.qml
 +++ b/src/qml/server-actions/ServerPubSub.qml
 @@ -1,9 +1,8 @@
@@ -1315,8 +1727,55 @@ index 13d688e..caededf 100644
  import "./../common"
  import "./../common/platformutils.js" as PlatformUtils
  import "./../settings"
+@@ -48,29 +47,25 @@ ServerAction {
+ 
+             model: tab.model.pubSubChannels ? tab.model.pubSubChannels : []
+ 
+-            rowDelegate: Item {
+-                height: 50
+-            }
++            rowHeight: 50
+ 
+-            LC.TableViewColumn {
+-                role: "addr"
+-                title: qsTranslate("RESP","Channel Name")
+-                width: 200
+-            }
++            columns: [
++                { role: "addr", title: qsTranslate("RESP","Channel Name"), width: 200 },
++                { role: "addr", width: 200, delegate: subscribeButton }
++            ]
++        }
++
++        Component {
++            id: subscribeButton
++
++            Item {
++                property var cellValue
+ 
+-            LC.TableViewColumn {
+-                role: "addr"
+-                width: 200
+-                delegate: Item {
+-                    BetterButton {
+-                        objectName: "rdm_server_info_pub_sub_subscribe_to_channel_btn"
+-                        anchors.centerIn: parent
+-                        text: qsTranslate("RESP","Subscribe in Console")
+-                        onClicked: {
+-                            console.log(styleData.value)
+-                            tab.model.subscribeToChannel(styleData.value)
+-                        }
+-                    }
++                BetterButton {
++                    objectName: "rdm_server_info_pub_sub_subscribe_to_channel_btn"
++                    anchors.centerIn: parent
++                    text: qsTranslate("RESP","Subscribe in Console")
++                    onClicked: tab.model.subscribeToChannel(cellValue)
+                 }
+             }
+ 
 diff --git a/src/qml/server-actions/ServerSlowlog.qml b/src/qml/server-actions/ServerSlowlog.qml
-index fca80d2..fbf560b 100644
+index fca80d2..84f07a4 100644
 --- a/src/qml/server-actions/ServerSlowlog.qml
 +++ b/src/qml/server-actions/ServerSlowlog.qml
 @@ -1,9 +1,8 @@
@@ -1334,6 +1793,71 @@ index fca80d2..fbf560b 100644
  import "./../common"
  import "./../common/platformutils.js" as PlatformUtils
  import "./../settings"
+@@ -49,43 +48,34 @@ ServerAction {
+ 
+             model: tab.model.slowLog ? tab.model.slowLog : []
+ 
+-            LC.TableViewColumn {
+-                role: "cmd"
+-                title: qsTranslate("RESP","Command")
+-                width: 600
+-
+-                delegate: BetterLabel {
+-                    text: {
++            columns: [
++                {
++                    role: "cmd",
++                    title: qsTranslate("RESP","Command"),
++                    width: 600,
++                    formatter: function(value) {
+                         var result = "";
+-                        for (var index in modelData['cmd']) {
+-                            result += modelData['cmd'][index] + " ";
++                        for (var index in value) {
++                            result += value[index] + " ";
+                         }
+                         return result;
+                     }
+-                    elide: styleData.elideMode
+-                }
+-            }
+-
+-            LC.TableViewColumn {
+-                role: "time"
+-                title: qsTranslate("RESP","Processed at")
+-                width: 150
+-
+-                delegate: BetterLabel {
+-                    text: {
+-                        return new Date(modelData['time']*1000).toLocaleString(
++                },
++                {
++                    role: "time",
++                    title: qsTranslate("RESP","Processed at"),
++                    width: 150,
++                    formatter: function(value) {
++                        return new Date(value*1000).toLocaleString(
+                                     locale, PlatformUtils.dateTimeFormat);
+                     }
+-                    elide: styleData.elideMode
++                },
++                {
++                    role: "exec_time",
++                    title: qsTranslate("RESP","Execution Time (μs)"),
++                    width: 150
+                 }
+-
+-            }
+-
+-            LC.TableViewColumn {
+-                role: "exec_time"
+-                title: qsTranslate("RESP","Execution Time (μs)")
+-                width: 150
+-            }
++            ]
+         }
+     }
+ }
 diff --git a/src/qml/settings/BoolOption.qml b/src/qml/settings/BoolOption.qml
 index 32cc51f..08f992e 100644
 --- a/src/qml/settings/BoolOption.qml
@@ -1438,7 +1962,7 @@ index 9557644..9a28fe6 100644
  
  ColumnLayout {    
 diff --git a/src/qml/value-editor/ValueTable.qml b/src/qml/value-editor/ValueTable.qml
-index c234081..5885251 100644
+index c234081..2bdf730 100644
 --- a/src/qml/value-editor/ValueTable.qml
 +++ b/src/qml/value-editor/ValueTable.qml
 @@ -1,14 +1,13 @@
@@ -1461,6 +1985,18 @@ index c234081..5885251 100644
  
  Item {
      id: root
+@@ -189,8 +188,9 @@ Item {
+                         reuseItems: false
+                         model: searchModel ? searchModel : null
+ 
+-                        // Proxy model row index from 0 to maxItemsOnPage
+-                        property int currentRow: -1
++                        // Qt 6's TableView already provides a FINAL currentRow
++                        // property with the same "row index in the view"
++                        // meaning, so it is used directly instead of shadowing it.
+                         property var searchField
+                         property var currentStart: 0
+                         property int maxItemsOnPage: keyTab.keyModel ? keyTab.keyModel.pageSize : 100
 diff --git a/src/qml/value-editor/ValueTableActions.qml b/src/qml/value-editor/ValueTableActions.qml
 index 9868e06..5dedb6e 100644
 --- a/src/qml/value-editor/ValueTableActions.qml

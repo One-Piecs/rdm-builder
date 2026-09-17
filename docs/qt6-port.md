@@ -7,8 +7,10 @@
 ## 现状
 
 - ✅ **C++ 部分已能用 Qt 6 编译并链接**（本机实测：arm64、链接 QtCore / QtCharts / QtCore5Compat 6.11.2，0 错误）
-- 🟡 **QML 部分已基本迁完**：界面现在能一路加载到「服务器动作」标签页，仅剩表格组件报错
-  （`ServerClients.qml: LC.TableViewColumn - LC is neither a type nor a namespace`）
+- ✅ **第一步完成**：整个界面已能用 Qt 6 加载（`failed to load component` 归零），
+  Qt Quick Controls 1 与 `Controls.Styles` 在项目里已无残留
+- 遗留：`Qt.labs.settings` 已废弃（Qt6 提示迁到 QtCore 的 Settings）；若干表格的
+  数据绑定（QAbstractItemModel 路径）需要连上真实 Redis 才能实测
 
 ## 已完成
 
@@ -54,13 +56,32 @@ Qt 6 把 `TreeView` 从 `QtQuick.Controls` 移到了 **`QtQuick` 模块**，并�
 - `TreeItemDelegate.qml` 里的 Controls 1 `styleData` 换成 Qt6 委托作用域直接提供的 `metadata`（模型角色）/ `selected` / `expanded` / `row`
 - 菜单是 Loader 动态加载的，通过给 `InlineMenu` 加一个 `styleData` 属性、由委托在 `onLoaded` 里注入数据，菜单文件本身几乎不用改
 
-## 待办：表格组件（最后一块）
+## 已完成：表格组件（`patches/qt6/0002` 内）
 
-| 文件 | 说明 |
-| --- | --- |
-| `common/LegacyTableView.qml` | 封装的是 Controls 1 的 `TableView`，需改为 Qt6 TableView |
-| `server-actions/ServerClients.qml`、`ServerConfig.qml`、`ServerPubSub.qml`、`ServerSlowlog.qml`、`extension-server/ExtensionServerSettings.qml` | 用 `LC.TableViewColumn { role, title, width, delegate }` 定义列 → 需改成 Qt6 的列模型 + 委托（列内还用到 `styleData.elideMode`） |
-| `console/RedisConsole.qml` | 混用 TableViewColumn 与 `styleData`（含 `styleData.textColor` / `column` / `row` 等）|
+`LC.TableViewColumn` 在 Qt6 中不存在，columns 改为数组式声明：
+
+```qml
+LegacyTableView {
+    model: someList
+    columns: [
+        { role: "name", title: "名称", width: 200 },
+        { role: "value", title: "值", width: 300,
+          formatter: function(value, row) { return value.toUpperCase() } }
+    ]
+}
+```
+
+- `common/LegacyTableView.qml` 重写为基于 Qt Quick 原语的表格（表头 + ListView），
+  支持 `columns` 数组、`formatter` 函数、自定义单元格 `delegate`（注入 `cellValue` /
+  `rowData` / `rowIndex` / `columnRole`）、`rowHeight`、`currentRow`、`rowCount`
+- 同时兼容 JS 数组模型（`modelData`）与 QAbstractItemModel（角色挂在 `model` 上）
+- 5 个消费者（`ServerClients` / `ServerConfig` / `ServerPubSub` / `ServerSlowlog` /
+  `ExtensionServerSettings`）改为数组声明；`ServerSlowlog` 的日期与命令拼接改用 `formatter`
+- `console/RedisConsole.qml` 的自动补全表格同样迁移；`BaseConsole` 补上
+  `backgroundVisible` / `textColor`（Qt6 的 TextArea 没有），`menu: null` 与
+  `iconSource` 换成 Controls 2 的写法
+- `ValueTable.qml` 里 RDM 自定义的 `currentRow` 与 Qt6 TableView 的 **FINAL**
+  `currentRow` 冲突，直接改用视图自带属性（语义一致，都是视图内的行号）
 
 这些文件同时也是第二步「深浅双主题 + macOS 原生风格」要动的地方，建议一次做完。
 
