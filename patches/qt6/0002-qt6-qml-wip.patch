@@ -558,15 +558,16 @@ index 6014114..e2edfd0 100644
  
  Item {
 diff --git a/src/qml/common/LegacyTableView.qml b/src/qml/common/LegacyTableView.qml
-index 820762e..fcfd672 100644
+index 820762e..6f9a42a 100644
 --- a/src/qml/common/LegacyTableView.qml
 +++ b/src/qml/common/LegacyTableView.qml
-@@ -1,4 +1,4 @@
+@@ -1,5 +1,4 @@
 -import QtQuick 2.0
+-import QtQuick.Controls 1.4 as LC
 +import QtQuick
- import QtQuick.Controls 1.4 as LC
  import "./platformutils.js" as PlatformUtils
  
+ LC.TableView {
 diff --git a/src/qml/common/NewTextArea.qml b/src/qml/common/NewTextArea.qml
 index 05f519e..9b8f49d 100644
 --- a/src/qml/common/NewTextArea.qml
@@ -658,23 +659,134 @@ index 571edba..80810dc 100644
  BetterLabel {
      font.pixelSize: 15
 diff --git a/src/qml/connections-tree/BetterTreeView.qml b/src/qml/connections-tree/BetterTreeView.qml
-index d84360a..71a205c 100644
+index d84360a..851b0e8 100644
 --- a/src/qml/connections-tree/BetterTreeView.qml
 +++ b/src/qml/connections-tree/BetterTreeView.qml
-@@ -1,9 +1,9 @@
+@@ -1,104 +1,46 @@
 -import QtQuick 2.14
 -import QtQuick.Layouts 1.1
-+import QtQuick
-+import QtQuick.Layouts
- import QtQuick.Controls 1.4
- import QtQuick.Controls.Styles 1.4
+-import QtQuick.Controls 1.4
+-import QtQuick.Controls.Styles 1.4
 -import QtQml.Models 2.2
 -import QtQuick.Window 2.2
++import QtQuick
 +import QtQml.Models
-+import QtQuick.Window
  import "./../common/platformutils.js" as PlatformUtils
  import "./../common"
  import "."
+ 
++// Qt 6 moved TreeView into the QtQuick module and made it row based, while the
++// connections model keeps its QModelIndex based API - rows are translated back
++// to indexes here.
+ TreeView {
+     id: root
+-    alternatingRowColors: false
+-    headerVisible: false
+-    focus: true
+-    horizontalScrollBarPolicy: Qt.ScrollBarAsNeeded
+-    verticalScrollBarPolicy: Qt.ScrollBarAsNeeded
+ 
+     model: connectionsManager
++    focus: true
++    clip: true
+ 
+     property bool sortConnections: false
+ 
+-    backgroundVisible: false
+-
+-    /**
+-      * NOTE(u_glide): Dirty hack to use build-in macOS style for scrollbars on all platforms
+-      */
+-    Component.onCompleted: {
+-        if (!PlatformUtils.isOSX()) {
+-            __scroller.verticalScrollBar.__panel.on = true
+-        }
++    delegate: TreeItemDelegate {
++        treeRoot: root
++        sortConnections: root.sortConnections
+     }
+ 
+-    Connections {
+-        target: !PlatformUtils.isOSX()? __scroller.verticalScrollBar.__panel : null
+-
+-        function onOnChanged() {
+-            if (!__scroller.verticalScrollBar.__panel.on) {
+-                __scroller.verticalScrollBar.__panel.on = true
+-            }
+-        }
++    selectionModel: ItemSelectionModel {
++        id: connectionTreeSelectionModel
++        model: connectionsManager
+     }
+ 
+-    Component {
+-        id: patchedBackground
+-
+-        Item {
+-            implicitWidth: 25
+-            implicitHeight: 200
+-        }
++    onExpanded: function (row) {
++        if (connectionsManager)
++            connectionsManager.setExpanded(root.modelIndex(row, 0))
+     }
+-    // hack-end
+ 
+-    style: TreeViewStyle {
+-        frame: Item {}
+-
+-        indentation: 12
+-
+-        rowDelegate: Rectangle {
+-            height: PlatformUtils.isOSXRetina(Screen) ? 25 : 30
+-            color: styleData.selected ? sysPalette.highlight : "transparent"
+-        }
+-
+-        transientScrollBars: true
+-
+-        backgroundColor: sysPalette.button
+-
+-        scrollBarBackground: PlatformUtils.isOSX()? TreeViewStyle.scrollBarBackground : patchedBackground
++    onCollapsed: function (row) {
++        if (connectionsManager)
++            connectionsManager.setCollapsed(root.modelIndex(row, 0))
+     }
+ 
+-    TableViewColumn {
+-        id: itemColumn
+-        title: "item"
+-        role: "metadata"
+-
+-        delegate: TreeItemDelegate {
+-            id: itemRoot            
+-            treeRoot: root
+-            sortConnections: root.sortConnections
+-        }
+-    }    
+-
+-    selectionMode: SelectionMode.SingleSelection
+-
+-    selection: ItemSelectionModel {
+-        id: connectionTreeSelectionModel
+-        model: connectionsManager
+-    }
+-
+-    onClicked: connectionsManager && connectionsManager.sendEvent(index, "click")
+-    onExpanded: connectionsManager.setExpanded(index)
+-    onCollapsed: connectionsManager.setCollapsed(index)
+-
+     Connections {
+         target: connectionsManager
+ 
+         function onExpand(index) {
+-            if (root.isExpanded(index))
+-                return
+-
+-            root.expand(index)
++            root.expandToIndex(index)
+         }
+     }
+ }
 diff --git a/src/qml/connections-tree/ConnectionGroupDialog.qml b/src/qml/connections-tree/ConnectionGroupDialog.qml
 index 75a1a41..0f5e579 100644
 --- a/src/qml/connections-tree/ConnectionGroupDialog.qml
@@ -692,38 +804,214 @@ index 75a1a41..0f5e579 100644
  import "../common/platformutils.js" as PlatformUtils
  
 diff --git a/src/qml/connections-tree/TreeItemDelegate.qml b/src/qml/connections-tree/TreeItemDelegate.qml
-index ca712fc..9f20c6a 100644
+index ca712fc..dcb7cf9 100644
 --- a/src/qml/connections-tree/TreeItemDelegate.qml
 +++ b/src/qml/connections-tree/TreeItemDelegate.qml
-@@ -1,9 +1,8 @@
+@@ -1,9 +1,7 @@
 -import QtQuick 2.14
 -import QtQuick.Layouts 1.1
-+import QtQuick
-+import QtQuick.Layouts
- import QtQuick.Controls 1.4
+-import QtQuick.Controls 1.4
 -import QtQuick.Controls.Styles 1.4
 -import QtQml.Models 2.2
 -import QtQuick.Window 2.2
++import QtQuick
++import QtQuick.Layouts
 +import QtQml.Models
 +import QtQuick.Window
  import "./../common/platformutils.js" as PlatformUtils
  import "./../common"
  
+@@ -62,7 +60,9 @@ FocusScope {
+         id: dragArea
+         anchors.fill: parent
+ 
+-        acceptedButtons: root.sortConnections ? Qt.LeftButton : Qt.RightButton | Qt.MiddleButton
++        // Qt 6's TreeView has no clicked() signal, so the left click is handled here.
++        acceptedButtons: root.sortConnections ? Qt.LeftButton
++                                              : Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+ 
+         drag.target: root.sortConnections ? wrapper : null
+         drag.axis: Drag.YAxis
+@@ -83,7 +83,7 @@ FocusScope {
+         }
+ 
+         onPressed: {
+-            if (root.sortConnections && styleData.value["type"] === "server") {
++            if (root.sortConnections && metadata["type"] === "server") {
+                 held = true
+                 wrapper.border.width = 1
+                 wrapper.border.color = sysPalette.light
+@@ -94,16 +94,21 @@ FocusScope {
+         onClicked: {
+             console.log("Catch event to item")
+ 
++            if (mouse.button === Qt.LeftButton && !root.sortConnections) {
++                connectionsManager.sendEvent(treeRoot.modelIndex(row, 0), "click")
++                return
++            }
++
+             if (mouse.button === Qt.RightButton) {
+                 mouse.accepted = true
+-                connectionTreeSelectionModel.setCurrentIndex(styleData.index, 1)
+-                connectionsManager.sendEvent(styleData.index, "right-click")
++                connectionTreeSelectionModel.setCurrentIndex(treeRoot.modelIndex(row, 0), 1)
++                connectionsManager.sendEvent(treeRoot.modelIndex(row, 0), "right-click")
+                 return
+             }
+ 
+             if (mouse.button === Qt.MiddleButton) {
+                 mouse.accepted = true
+-                connectionsManager.sendEvent(styleData.index, "mid-click")
++                connectionsManager.sendEvent(treeRoot.modelIndex(row, 0), "mid-click")
+                 return
+             }
+         }
+@@ -118,7 +123,7 @@ FocusScope {
+             anchors.rightMargin: 10
+             color: "transparent"
+ 
+-            property var itemIndex: styleData.index
++            property var itemIndex: treeRoot.modelIndex(row, 0)
+ 
+             Drag.active: dragArea.held
+             Drag.hotSpot.x: width / 3
+@@ -143,10 +148,10 @@ FocusScope {
+                 }
+             }
+ 
+-            property bool itemEnabled: styleData.value["state"] === true
+-            property bool itemLocked: styleData.value["locked"] === true
+-            property string itemType: styleData.value["type"] ? styleData.value["type"] : ""
+-            property string userColor: styleData.value["user_color"] ? styleData.value["user_color"] : ""
++            property bool itemEnabled: metadata["state"] === true
++            property bool itemLocked: metadata["locked"] === true
++            property string itemType: metadata["type"] ? metadata["type"] : ""
++            property string userColor: metadata["user_color"] ? metadata["user_color"] : ""
+             property string itemIconSource: {
+                 if (itemLocked) {
+                     return PlatformUtils.getThemeIcon("wait.svg")
+@@ -155,7 +160,7 @@ FocusScope {
+                 var type = itemType
+ 
+                 if (type === "server") {
+-                    var server_type = styleData.value["server_type"]
++                    var server_type = metadata["server_type"]
+                     var serverIcon = ""
+ 
+                     if (server_type === "unknown") {
+@@ -176,7 +181,7 @@ FocusScope {
+                         return serverIcon
+                     }
+                 } else if (type === "database") {
+-                    if (styleData.value["live_update"] === true) {
++                    if (metadata["live_update"] === true) {
+                         return PlatformUtils.getThemeIcon("live_update.svg")
+                     } else {
+                         var icon = PlatformUtils.getThemeIcon(type + ".svg")
+@@ -189,7 +194,7 @@ FocusScope {
+                         }
+                     }
+                 } else if (type === "namespace" || type == "server_group"
+-                           && styleData.isExpanded) {
++                           && expanded) {
+                     return PlatformUtils.getThemeIcon(type + "_open.svg")
+                 } else {
+                     if (type !== "") {
+@@ -216,14 +221,14 @@ FocusScope {
+                 anchors.left: itemIcon.right
+                 anchors.leftMargin: 3
+                 anchors.verticalCenter: parent.verticalCenter
+-                text: wrapper.itemEnabled ? styleData.value["name"] : styleData.value["name"]
++                text: wrapper.itemEnabled ? metadata["name"] : metadata["name"]
+                                             + qsTranslate("RESP", " (Removed)")
+-                color: wrapper.itemEnabled ? styleData.selected ? sysPalette.highlightedText : sysPalette.windowText : inactiveSysPalette.windowText
++                color: wrapper.itemEnabled ? selected ? sysPalette.highlightedText : sysPalette.windowText : inactiveSysPalette.windowText
+             }
+ 
+             Rectangle {
+                 id: menuWrapper
+-                implicitWidth: styleData.value["type"] === "database"? 200 : 150
++                implicitWidth: metadata["type"] === "database"? 200 : 150
+                 anchors {
+                     right: wrapper.right
+                     top: wrapper.top
+@@ -231,10 +236,10 @@ FocusScope {
+                     rightMargin: 20
+                 }
+                 height: parent.height
+-                visible: styleData.selected && wrapper.itemEnabled
++                visible: selected && wrapper.itemEnabled
+                 color: {
+                     var baseColor = sysPalette.highlight;
+-                    if (styleData.selected) {
++                    if (selected) {
+                         return Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.85)
+                     } else {
+                         return "transparent"
+@@ -252,13 +257,17 @@ FocusScope {
+                     asynchronous: false
+ 
+                     source: {
+-                        if (!(styleData.selected && styleData.value["type"]))
++                        if (!(selected && metadata["type"]))
+                             return ""
+ 
+-                        return "./menu/" + styleData.value["type"] + ".qml"
++                        return "./menu/" + metadata["type"] + ".qml"
+                     }
+ 
+                     onLoaded: {
++                        item.styleData = {
++                            "value": metadata,
++                            "index": treeRoot.modelIndex(row, 0)
++                        }
+                         wrapper.forceActiveFocus()
+                         menuWrapper.width = item.width
+                     }
+@@ -275,7 +284,7 @@ FocusScope {
+             }
+ 
+             onEntered: {
+-                if (styleData.value["type"] === "server_group") {
++                if (metadata["type"] === "server_group") {
+                     wrapper.border.width = 1
+                     wrapper.border.color = sysPalette.highlight
+                 }
+@@ -284,7 +293,7 @@ FocusScope {
+             onDropped: {
+                 wrapper.border.width = 0
+                 connectionsManager.dropItemAt(drag.source.itemIndex,
+-                                              styleData.index)
++                                              treeRoot.modelIndex(row, 0))
+             }
+ 
+             onExited: {
 diff --git a/src/qml/connections-tree/menu/InlineMenu.qml b/src/qml/connections-tree/menu/InlineMenu.qml
-index 807eb7b..8df403b 100644
+index 807eb7b..76c6a1b 100644
 --- a/src/qml/connections-tree/menu/InlineMenu.qml
 +++ b/src/qml/connections-tree/menu/InlineMenu.qml
-@@ -1,7 +1,7 @@
+@@ -1,7 +1,6 @@
 -import QtQuick 2.5
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.4
+-import QtQuick.Window 2.2
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.4
--import QtQuick.Window 2.2
 +import QtQuick.Window
  import "./../../common/platformutils.js" as PlatformUtils
  import "./../../"
  import "./../../common/"
+@@ -11,6 +10,10 @@ RowLayout {
+    property alias model: repeater.model   
+    property var callbacks
+ 
++   // Qt 6 no longer injects styleData into the tree delegate's context; the
++   // delegate hands the row data over when it loads this menu.
++   property var styleData: ({})
++
+    function sendEvent(e) {
+        if (!connectionsManager)
+            return
 diff --git a/src/qml/connections-tree/menu/database.qml b/src/qml/connections-tree/menu/database.qml
 index 5dce53c..dacf34d 100644
 --- a/src/qml/connections-tree/menu/database.qml
@@ -741,53 +1029,57 @@ index 5dce53c..dacf34d 100644
  import "."
  import "./../../common/"
 diff --git a/src/qml/connections-tree/menu/key.qml b/src/qml/connections-tree/menu/key.qml
-index 6ae5b7d..af03ea2 100644
+index 6ae5b7d..1115ae0 100644
 --- a/src/qml/connections-tree/menu/key.qml
 +++ b/src/qml/connections-tree/menu/key.qml
-@@ -1,5 +1,5 @@
+@@ -1,6 +1,5 @@
 -import QtQuick 2.3
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.4
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.4
  import "."
  import "./../../common/platformutils.js" as PlatformUtils
+ 
 diff --git a/src/qml/connections-tree/menu/namespace.qml b/src/qml/connections-tree/menu/namespace.qml
-index ae042ae..286dc27 100644
+index ae042ae..b6698ef 100644
 --- a/src/qml/connections-tree/menu/namespace.qml
 +++ b/src/qml/connections-tree/menu/namespace.qml
-@@ -1,5 +1,5 @@
+@@ -1,6 +1,5 @@
 -import QtQuick 2.3
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.4
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.4
  import "."
  import "./../../common/platformutils.js" as PlatformUtils
+ 
 diff --git a/src/qml/connections-tree/menu/server.qml b/src/qml/connections-tree/menu/server.qml
-index d26c218..bae0b46 100644
+index d26c218..54eb041 100644
 --- a/src/qml/connections-tree/menu/server.qml
 +++ b/src/qml/connections-tree/menu/server.qml
-@@ -1,5 +1,5 @@
+@@ -1,6 +1,5 @@
 -import QtQuick 2.5
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.4
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.4
  import "."
  import "./../../common/platformutils.js" as PlatformUtils
+ 
 diff --git a/src/qml/connections-tree/menu/server_group.qml b/src/qml/connections-tree/menu/server_group.qml
-index 2538a98..74cd757 100644
+index 2538a98..b01efb8 100644
 --- a/src/qml/connections-tree/menu/server_group.qml
 +++ b/src/qml/connections-tree/menu/server_group.qml
-@@ -1,5 +1,5 @@
+@@ -1,6 +1,5 @@
 -import QtQuick 2.5
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.4
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.4
  import "."
  import "./../../common/platformutils.js" as PlatformUtils
+ 
 diff --git a/src/qml/connections/AskSecretDialog.qml b/src/qml/connections/AskSecretDialog.qml
 index ec003c4..7100c8e 100644
 --- a/src/qml/connections/AskSecretDialog.qml
@@ -830,15 +1122,16 @@ index 79747e8..64cd816 100644
  import "../common/platformutils.js" as PlatformUtils
  
 diff --git a/src/qml/console/BaseConsole.qml b/src/qml/console/BaseConsole.qml
-index 64f93eb..6c7d288 100644
+index 64f93eb..0977206 100644
 --- a/src/qml/console/BaseConsole.qml
 +++ b/src/qml/console/BaseConsole.qml
-@@ -1,4 +1,4 @@
+@@ -1,5 +1,4 @@
 -import QtQuick 2.0
+-import QtQuick.Controls 1.4
 +import QtQuick
- import QtQuick.Controls 1.4
  
  TextArea {
+     id: root
 diff --git a/src/qml/console/Consoles.qml b/src/qml/console/Consoles.qml
 index 920cee7..193984c 100644
 --- a/src/qml/console/Consoles.qml
@@ -857,14 +1150,14 @@ index 920cee7..193984c 100644
  import "./../common/platformutils.js" as PlatformUtils
  
 diff --git a/src/qml/console/RedisConsole.qml b/src/qml/console/RedisConsole.qml
-index 085b08b..e46a42a 100644
+index 085b08b..9cf7ee9 100644
 --- a/src/qml/console/RedisConsole.qml
 +++ b/src/qml/console/RedisConsole.qml
-@@ -1,6 +1,6 @@
+@@ -1,6 +1,5 @@
 -import QtQuick 2.3
-+import QtQuick
- import QtQuick.Controls 1.4
+-import QtQuick.Controls 1.4
 -import QtQuick.Layouts 1.1
++import QtQuick
 +import QtQuick.Layouts
  import "../common"
  import "../common/platformutils.js" as PlatformUtils
@@ -883,19 +1176,19 @@ index 7ba5e1c..5500d7a 100644
  
  Item { }
 diff --git a/src/qml/extension-server/ExtensionServerSettings.qml b/src/qml/extension-server/ExtensionServerSettings.qml
-index ec0adde..934eaa7 100644
+index ec0adde..9ca3f92 100644
 --- a/src/qml/extension-server/ExtensionServerSettings.qml
 +++ b/src/qml/extension-server/ExtensionServerSettings.qml
-@@ -1,9 +1,9 @@
+@@ -1,9 +1,8 @@
 -import QtQuick 2.15
 -import QtQuick.Layouts 1.1
 -import QtQuick.Controls 2.13
+-import QtQuick.Controls 1.4 as LC
+-import Qt.labs.settings 1.0
+-import QtQuick.Window 2.3
 +import QtQuick
 +import QtQuick.Layouts
 +import QtQuick.Controls
- import QtQuick.Controls 1.4 as LC
--import Qt.labs.settings 1.0
--import QtQuick.Window 2.3
 +import Qt.labs.settings
 +import QtQuick.Window
  import "../common"
@@ -926,58 +1219,58 @@ index acf21be..f102b02 100644
  Item {
      id: root
 diff --git a/src/qml/server-actions/ServerActionTabs.qml b/src/qml/server-actions/ServerActionTabs.qml
-index 9c0e7cc..5e6527a 100644
+index 9c0e7cc..5e344c5 100644
 --- a/src/qml/server-actions/ServerActionTabs.qml
 +++ b/src/qml/server-actions/ServerActionTabs.qml
-@@ -1,9 +1,9 @@
+@@ -1,9 +1,8 @@
 -import QtQuick 2.3
 -import QtQuick.Layouts 1.13
 -import QtQuick.Controls 2.13
+-import QtQuick.Controls 1.4 as LC
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
 +import QtQuick
 +import QtQuick.Layouts
 +import QtQuick.Controls
- import QtQuick.Controls 1.4 as LC
--import QtQuick.Window 2.2
--import QtCharts 2.3
 +import QtQuick.Window
 +import QtCharts
  import "./../common"
  import "./../common/platformutils.js" as PlatformUtils
  import "./../settings"
 diff --git a/src/qml/server-actions/ServerCharts.qml b/src/qml/server-actions/ServerCharts.qml
-index 022fda4..e889af6 100644
+index 022fda4..1adaf36 100644
 --- a/src/qml/server-actions/ServerCharts.qml
 +++ b/src/qml/server-actions/ServerCharts.qml
-@@ -1,9 +1,9 @@
+@@ -1,9 +1,8 @@
 -import QtQuick 2.3
 -import QtQuick.Layouts 1.13
 -import QtQuick.Controls 2.13
+-import QtQuick.Controls 1.4 as LC
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
 +import QtQuick
 +import QtQuick.Layouts
 +import QtQuick.Controls
- import QtQuick.Controls 1.4 as LC
--import QtQuick.Window 2.2
--import QtCharts 2.3
 +import QtQuick.Window
 +import QtCharts
  import "./../common"
  import "./../common/platformutils.js" as PlatformUtils
  import "./../settings"
 diff --git a/src/qml/server-actions/ServerClients.qml b/src/qml/server-actions/ServerClients.qml
-index 57c8b21..29af5a6 100644
+index 57c8b21..e30bcbf 100644
 --- a/src/qml/server-actions/ServerClients.qml
 +++ b/src/qml/server-actions/ServerClients.qml
-@@ -1,10 +1,10 @@
+@@ -1,10 +1,9 @@
 -import QtQuick 2.15
 -import QtQuick.Layouts 1.13
 -import QtQuick.Controls 2.13
-+import QtQuick
-+import QtQuick.Layouts
-+import QtQuick.Controls
- import QtQuick.Controls 1.4 as LC
+-import QtQuick.Controls 1.4 as LC
 -import Qt.labs.qmlmodels 1.0
 -import QtQuick.Window 2.2
 -import QtCharts 2.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
 +import Qt.labs.qmlmodels
 +import QtQuick.Window
 +import QtCharts
@@ -985,57 +1278,57 @@ index 57c8b21..29af5a6 100644
  import "./../common/platformutils.js" as PlatformUtils
  import "./../settings"
 diff --git a/src/qml/server-actions/ServerConfig.qml b/src/qml/server-actions/ServerConfig.qml
-index d869006..3e9fbab 100644
+index d869006..e0ed5d3 100644
 --- a/src/qml/server-actions/ServerConfig.qml
 +++ b/src/qml/server-actions/ServerConfig.qml
-@@ -1,9 +1,9 @@
+@@ -1,9 +1,8 @@
 -import QtQuick 2.3
 -import QtQuick.Layouts 1.13
 -import QtQuick.Controls 2.13
+-import QtQuick.Controls 1.4 as LC
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
 +import QtQuick
 +import QtQuick.Layouts
 +import QtQuick.Controls
- import QtQuick.Controls 1.4 as LC
--import QtQuick.Window 2.2
--import QtCharts 2.3
 +import QtQuick.Window
 +import QtCharts
  import "./../common"
  import "./../common/platformutils.js" as PlatformUtils
  import "./../settings"
 diff --git a/src/qml/server-actions/ServerPubSub.qml b/src/qml/server-actions/ServerPubSub.qml
-index 13d688e..187beee 100644
+index 13d688e..caededf 100644
 --- a/src/qml/server-actions/ServerPubSub.qml
 +++ b/src/qml/server-actions/ServerPubSub.qml
-@@ -1,9 +1,9 @@
+@@ -1,9 +1,8 @@
 -import QtQuick 2.3
 -import QtQuick.Layouts 1.13
 -import QtQuick.Controls 2.13
+-import QtQuick.Controls 1.4 as LC
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
 +import QtQuick
 +import QtQuick.Layouts
 +import QtQuick.Controls
- import QtQuick.Controls 1.4 as LC
--import QtQuick.Window 2.2
--import QtCharts 2.3
 +import QtQuick.Window
 +import QtCharts
  import "./../common"
  import "./../common/platformutils.js" as PlatformUtils
  import "./../settings"
 diff --git a/src/qml/server-actions/ServerSlowlog.qml b/src/qml/server-actions/ServerSlowlog.qml
-index fca80d2..a245e43 100644
+index fca80d2..fbf560b 100644
 --- a/src/qml/server-actions/ServerSlowlog.qml
 +++ b/src/qml/server-actions/ServerSlowlog.qml
-@@ -1,9 +1,9 @@
+@@ -1,9 +1,8 @@
 -import QtQuick 2.3
 -import QtQuick.Layouts 1.13
 -import QtQuick.Controls 2.13
+-import QtQuick.Controls 1.4 as LC
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
 +import QtQuick
 +import QtQuick.Layouts
 +import QtQuick.Controls
- import QtQuick.Controls 1.4 as LC
--import QtQuick.Window 2.2
--import QtCharts 2.3
 +import QtQuick.Window
 +import QtCharts
  import "./../common"
@@ -1084,19 +1377,19 @@ index e18c09e..5d7d52e 100644
  import "../common"
  import "."
 diff --git a/src/qml/settings/GlobalSettings.qml b/src/qml/settings/GlobalSettings.qml
-index b721772..5dd5e62 100644
+index b721772..b0e66ac 100644
 --- a/src/qml/settings/GlobalSettings.qml
 +++ b/src/qml/settings/GlobalSettings.qml
-@@ -1,9 +1,9 @@
+@@ -1,9 +1,8 @@
 -import QtQuick 2.15
 -import QtQuick.Layouts 1.1
 -import QtQuick.Controls 2.13
+-import QtQuick.Controls 1.4 as LC
+-import Qt.labs.settings 1.0
+-import QtQuick.Window 2.3
 +import QtQuick
 +import QtQuick.Layouts
 +import QtQuick.Controls
- import QtQuick.Controls 1.4 as LC
--import Qt.labs.settings 1.0
--import QtQuick.Window 2.3
 +import Qt.labs.settings
 +import QtQuick.Window
  import "../common"
@@ -1227,30 +1520,30 @@ index f31d309..cba42e6 100644
  Repeater {
  
 diff --git a/src/qml/value-editor/editors/AbstractEditor.qml b/src/qml/value-editor/editors/AbstractEditor.qml
-index 8e5b197..cc2dac7 100644
+index 8e5b197..cf117d1 100644
 --- a/src/qml/value-editor/editors/AbstractEditor.qml
 +++ b/src/qml/value-editor/editors/AbstractEditor.qml
-@@ -1,7 +1,6 @@
+@@ -1,7 +1,5 @@
 -import QtQuick 2.0
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.2
--import QtQuick.Controls.Styles 1.1
  
  ColumnLayout {
  
 diff --git a/src/qml/value-editor/editors/HashItemEditor.qml b/src/qml/value-editor/editors/HashItemEditor.qml
-index 134c740..39c7d83 100644
+index 134c740..175aa24 100644
 --- a/src/qml/value-editor/editors/HashItemEditor.qml
 +++ b/src/qml/value-editor/editors/HashItemEditor.qml
-@@ -1,7 +1,6 @@
+@@ -1,7 +1,5 @@
 -import QtQuick 2.0
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.2
--import QtQuick.Controls.Styles 1.1
  
  import "."
  
@@ -1273,72 +1566,72 @@ index 535cfea..2dfde38 100644
  import "../../common/"
  import "../../common/platformutils.js" as PlatformUtils
 diff --git a/src/qml/value-editor/editors/ReadOnlySingleItemEditor.qml b/src/qml/value-editor/editors/ReadOnlySingleItemEditor.qml
-index 47e1594..5ae1fc5 100644
+index 47e1594..6b008bc 100644
 --- a/src/qml/value-editor/editors/ReadOnlySingleItemEditor.qml
 +++ b/src/qml/value-editor/editors/ReadOnlySingleItemEditor.qml
-@@ -1,7 +1,6 @@
+@@ -1,7 +1,5 @@
 -import QtQuick 2.0
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.2
--import QtQuick.Controls.Styles 1.1
  
  import "."
  
 diff --git a/src/qml/value-editor/editors/SingleItemEditor.qml b/src/qml/value-editor/editors/SingleItemEditor.qml
-index 87c06c6..a077a0d 100644
+index 87c06c6..fe96f1c 100644
 --- a/src/qml/value-editor/editors/SingleItemEditor.qml
 +++ b/src/qml/value-editor/editors/SingleItemEditor.qml
-@@ -1,7 +1,6 @@
+@@ -1,7 +1,5 @@
 -import QtQuick 2.0
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.2
--import QtQuick.Controls.Styles 1.1
  
  import "."
  
 diff --git a/src/qml/value-editor/editors/SortedSetItemEditor.qml b/src/qml/value-editor/editors/SortedSetItemEditor.qml
-index 41c67ad..932e0b8 100644
+index 41c67ad..d7faf34 100644
 --- a/src/qml/value-editor/editors/SortedSetItemEditor.qml
 +++ b/src/qml/value-editor/editors/SortedSetItemEditor.qml
-@@ -1,7 +1,6 @@
+@@ -1,7 +1,5 @@
 -import QtQuick 2.0
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.2
--import QtQuick.Controls.Styles 1.1
  
  import "."
  import "../../common"
 diff --git a/src/qml/value-editor/editors/StreamItemEditor.qml b/src/qml/value-editor/editors/StreamItemEditor.qml
-index 91973be..0dccea5 100644
+index 91973be..94905a2 100644
 --- a/src/qml/value-editor/editors/StreamItemEditor.qml
 +++ b/src/qml/value-editor/editors/StreamItemEditor.qml
-@@ -1,7 +1,6 @@
+@@ -1,7 +1,5 @@
 -import QtQuick 2.0
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.2
--import QtQuick.Controls.Styles 1.1
  
  import "."
  import "../../common"
 diff --git a/src/qml/value-editor/editors/UnsupportedDataType.qml b/src/qml/value-editor/editors/UnsupportedDataType.qml
-index 60cd294..7f27492 100644
+index 60cd294..c2b5f0b 100644
 --- a/src/qml/value-editor/editors/UnsupportedDataType.qml
 +++ b/src/qml/value-editor/editors/UnsupportedDataType.qml
-@@ -1,7 +1,6 @@
+@@ -1,7 +1,5 @@
 -import QtQuick 2.0
 -import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
 +import QtQuick
 +import QtQuick.Layouts
- import QtQuick.Controls 1.2
--import QtQuick.Controls.Styles 1.1
  import "./../../common"
  import "."
  

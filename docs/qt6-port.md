@@ -7,8 +7,8 @@
 ## 现状
 
 - ✅ **C++ 部分已能用 Qt 6 编译并链接**（本机实测：arm64、链接 QtCore / QtCharts / QtCore5Compat 6.11.2，0 错误）
-- 🟡 **QML 部分已推进过半**：import 版本号已全部清理，对话框 API 已迁移；目前仍卡在
-  `connections-tree/BetterTreeView.qml`（Controls 1 的 `TreeView`），界面尚未能加载
+- 🟡 **QML 部分已基本迁完**：界面现在能一路加载到「服务器动作」标签页，仅剩表格组件报错
+  （`ServerClients.qml: LC.TableViewColumn - LC is neither a type nor a namespace`）
 
 ## 已完成
 
@@ -45,12 +45,22 @@
 
 ## 待办（真正的重写部分）
 
-Controls 1 的专属组件只剩三处，且都集中在封装层：
+### 第三段：连接树（`patches/qt6/0002` 内）
 
-1. **`connections-tree/BetterTreeView.qml`** —— `TableViewColumn` + `TreeViewStyle`（当前卡点）
-2. **`connections-tree/TreeItemDelegate.qml`** 及 `connections-tree/menu/*.qml` —— 依赖 Controls 1 注入的 `styleData`（共约 40 处）
-3. **`common/LegacyTableView.qml`** + 5 个消费者（`ServerClients` / `ServerConfig` / `ServerPubSub` / `ServerSlowlog` / `ExtensionServerSettings`）—— 用 `LC.TableViewColumn` 定义列
-4. **`console/RedisConsole.qml`** —— 混用 TableViewColumn 与 styleData
+Qt 6 把 `TreeView` 从 `QtQuick.Controls` 移到了 **`QtQuick` 模块**，并改成**按行索引**（`expand(row)` / `isExpanded(row)`），而 C++ 侧的 `connectionsManager` 仍是 QModelIndex 接口：
+
+- `BetterTreeView.qml` 重写为 Qt6 TreeView：行 ↔ 索引在 QML 里用 `modelIndex(row, 0)` 转换；`ItemSelectionModel` 保留
+- Qt6 的 TreeView **没有 `clicked` 信号**，左键点击改由委托的 MouseArea 处理
+- `TreeItemDelegate.qml` 里的 Controls 1 `styleData` 换成 Qt6 委托作用域直接提供的 `metadata`（模型角色）/ `selected` / `expanded` / `row`
+- 菜单是 Loader 动态加载的，通过给 `InlineMenu` 加一个 `styleData` 属性、由委托在 `onLoaded` 里注入数据，菜单文件本身几乎不用改
+
+## 待办：表格组件（最后一块）
+
+| 文件 | 说明 |
+| --- | --- |
+| `common/LegacyTableView.qml` | 封装的是 Controls 1 的 `TableView`，需改为 Qt6 TableView |
+| `server-actions/ServerClients.qml`、`ServerConfig.qml`、`ServerPubSub.qml`、`ServerSlowlog.qml`、`extension-server/ExtensionServerSettings.qml` | 用 `LC.TableViewColumn { role, title, width, delegate }` 定义列 → 需改成 Qt6 的列模型 + 委托（列内还用到 `styleData.elideMode`） |
+| `console/RedisConsole.qml` | 混用 TableViewColumn 与 `styleData`（含 `styleData.textColor` / `column` / `row` 等）|
 
 这些文件同时也是第二步「深浅双主题 + macOS 原生风格」要动的地方，建议一次做完。
 
