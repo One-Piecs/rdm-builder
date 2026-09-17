@@ -1,0 +1,687 @@
+Submodule 3rdparty/pyotherside contains modified content
+diff --git a/3rdparty/pyotherside/src/qpython.cpp b/3rdparty/pyotherside/src/qpython.cpp
+index 1b76681..530068d 100644
+--- a/3rdparty/pyotherside/src/qpython.cpp
++++ b/3rdparty/pyotherside/src/qpython.cpp
+@@ -34,6 +34,14 @@
+ #define SINCE_API_VERSION(smaj, smin) \
+     ((api_version_major > smaj) || (api_version_major == smaj && api_version_minor >= smin))
+ 
++// QJSValue::engine() was removed in Qt 6; qjsEngine() replaces it.
++// (Same fix as upstream pyotherside.)
++#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
++#  define GET_JS_ENGINE(obj) ((obj).engine())
++#else
++#  define GET_JS_ENGINE(obj) (qjsEngine(this))
++#endif
++
+ 
+ QPythonPriv *
+ QPython::priv = NULL;
+@@ -265,7 +273,7 @@ QPython::receive(QVariant variant)
+         QJSValue callback = handlers[event];
+         QJSValueList args;
+         for (int i=1; i<list.size(); i++) {
+-            args << callback.engine()->toScriptValue(list[i]);
++            args << GET_JS_ENGINE(callback)->toScriptValue(list[i]);
+         }
+         QJSValue result = callback.call(args);
+         if (result.isError()) {
+@@ -435,7 +443,7 @@ void
+ QPython::finished(QVariant result, QJSValue *callback)
+ {
+     QJSValueList args;
+-    QJSValue v = callback->engine()->toScriptValue(result);
++    QJSValue v = GET_JS_ENGINE(*callback)->toScriptValue(result);
+     args << v;
+     QJSValue callbackResult = callback->call(args);
+     if (SINCE_API_VERSION(1, 2)) {
+@@ -452,7 +460,7 @@ void
+ QPython::imported(bool result, QJSValue *callback)
+ {
+     QJSValueList args;
+-    QJSValue v = callback->engine()->toScriptValue(QVariant(result));
++    QJSValue v = GET_JS_ENGINE(*callback)->toScriptValue(QVariant(result));
+     args << v;
+     QJSValue callbackResult = callback->call(args);
+     if (SINCE_API_VERSION(1, 2)) {
+diff --git a/3rdparty/pyotherside/src/qpython_priv.cpp b/3rdparty/pyotherside/src/qpython_priv.cpp
+index 8b4f879..151fd1a 100644
+--- a/3rdparty/pyotherside/src/qpython_priv.cpp
++++ b/3rdparty/pyotherside/src/qpython_priv.cpp
+@@ -405,8 +405,16 @@ pyotherside_QObjectMethod_call(PyObject *callable_object, PyObject *args, PyObje
+             }
+ 
+             QVariant result;
++#if QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
++            QGenericReturnArgument returnArg = Q_RETURN_ARG(QVariant, result);
++#else
++            // Since Qt 6.5 Q_RETURN_ARG() expands to QMetaMethodReturnArgument, but
++            // the (deprecated) QMetaMethod::invoke() overload takes a
++            // QGenericReturnArgument - build it by hand. See QTBUG-113147.
++            QGenericReturnArgument returnArg {QT_STRINGIFY(QVariant), &result};
++#endif
+             if (method.invoke(o, Qt::DirectConnection,
+-                    Q_RETURN_ARG(QVariant, result), genericArguments.value(0),
++                    returnArg, genericArguments.value(0),
+                     genericArguments.value(1), genericArguments.value(2),
+                     genericArguments.value(3), genericArguments.value(4),
+                     genericArguments.value(5), genericArguments.value(6),
+Submodule 3rdparty/qredisclient contains modified content
+Submodule 3rdparty/asyncfuture contains modified content
+diff --git a/3rdparty/qredisclient/3rdparty/asyncfuture/asyncfuture.h b/3rdparty/qredisclient/3rdparty/asyncfuture/asyncfuture.h
+index 402314b..f66432f 100644
+--- a/3rdparty/qredisclient/3rdparty/asyncfuture/asyncfuture.h
++++ b/3rdparty/qredisclient/3rdparty/asyncfuture/asyncfuture.h
+@@ -867,8 +867,10 @@ public:
+     inline bool bind(QObject* source,QString signal) {
+         sender = source;
+ 
+-        // Remove leading number
+-        signal = signal.replace(QRegExp("^[0-9]*"), "");
++        // Remove leading number (QRegExp is gone in Qt 6)
++        while (!signal.isEmpty() && signal.at(0).isDigit()) {
++            signal.remove(0, 1);
++        }
+ 
+         const int memberOffset = QObject::staticMetaObject.methodCount();
+ 
+@@ -914,7 +916,7 @@ public:
+                     if (type == QMetaType::QVariant) {
+                         v = *reinterpret_cast<QVariant *>(_a[1]);
+                     } else {
+-                        v = QVariant(type, _a[1]);
++                        v = QVariant(QMetaType(type), _a[1]);
+                     }
+                 }
+                 callback(v);
+@@ -925,16 +927,32 @@ public:
+ 
+ };
+ 
+-/* call() : Run functor(future):void */
++/* call() : Run functor(future):void
++ *
++ * A callback either receives the QFuture itself or the unwrapped result value.
++ * The original trait only recognised the first case and then handed the future
++ * to a value-taking callback, which no longer compiles. Same layering as the
++ * maintained AsyncFuture fork.
++ */
+ 
+ template <typename Functor, typename T>
+-typename std::enable_if<is_callable<Functor, T>::value, void>::type
++typename std::enable_if<is_callable<Functor, QFuture<T>>::value, void>::type
+ callIgnoreReturn(Functor& functor, QFuture<T>& future) {
+     functor(future);
+ }
+ 
+ template <typename Functor, typename T>
+-typename std::enable_if<!is_callable<Functor, T>::value, void>::type
++typename std::enable_if<!is_callable<Functor, QFuture<T>>::value &&
++                            is_callable<Functor, T>::value,
++                        void>::type
++callIgnoreReturn(Functor& functor, QFuture<T>& future) {
++    functor(future.result());
++}
++
++template <typename Functor, typename T>
++typename std::enable_if<!is_callable<Functor, QFuture<T>>::value &&
++                            !is_callable<Functor, T>::value,
++                        void>::type
+ callIgnoreReturn(Functor& functor, QFuture<T>& future) {
+     Q_UNUSED(functor);
+     Q_UNUSED(future);
+@@ -945,13 +963,23 @@ callIgnoreReturn(Functor& functor, QFuture<T>& future) {
+ }
+ 
+ template <typename Functor, typename T>
+-typename std::enable_if<is_callable<Functor, T>::value, RetType<Functor>>::type
++typename std::enable_if<is_callable<Functor, QFuture<T>>::value, RetType<Functor>>::type
+ call(Functor& functor, QFuture<T>& future) {
+     return functor(future);
+ }
+ 
+ template <typename Functor, typename T>
+-typename std::enable_if<!is_callable<Functor, T>::value, RetType<Functor>>::type
++typename std::enable_if<!is_callable<Functor, QFuture<T>>::value &&
++                            is_callable<Functor, T>::value,
++                        RetType<Functor>>::type
++call(Functor& functor, QFuture<T>& future) {
++    return functor(future.result());
++}
++
++template <typename Functor, typename T>
++typename std::enable_if<!is_callable<Functor, QFuture<T>>::value &&
++                            !is_callable<Functor, T>::value,
++                        RetType<Functor>>::type
+ call(Functor& functor, QFuture<T>& future) {
+     Q_UNUSED(functor);
+     Q_UNUSED(future);
+diff --git a/3rdparty/qredisclient/src/qredisclient/command.cpp b/3rdparty/qredisclient/src/qredisclient/command.cpp
+index 4298ea1..eb8bda6 100644
+--- a/3rdparty/qredisclient/src/qredisclient/command.cpp
++++ b/3rdparty/qredisclient/src/qredisclient/command.cpp
+@@ -450,11 +450,11 @@ bool RedisClient::Command::isValid() const { return !isEmpty(); }
+ 
+ QByteArray RedisClient::Command::serializeToRESP(QList<QByteArray> args) const {
+   QByteArray result;
+-  result.append(QString("*%1\r\n").arg(args.length()));
++  result.append(QString("*%1\r\n").arg(args.length()).toUtf8());
+ 
+   for (QByteArray partArray : args) {
+     result.append("$");
+-    result.append(QString::number(partArray.size()));
++    result.append(QString::number(partArray.size()).toUtf8());
+     result.append("\r\n");
+     result.append(partArray);
+     result.append("\r\n");
+diff --git a/3rdparty/qredisclient/src/qredisclient/connection.cpp b/3rdparty/qredisclient/src/qredisclient/connection.cpp
+index 5c86d00..ed152e9 100644
+--- a/3rdparty/qredisclient/src/qredisclient/connection.cpp
++++ b/3rdparty/qredisclient/src/qredisclient/connection.cpp
+@@ -4,6 +4,7 @@
+ #include <QDir>
+ #include <QJsonDocument>
+ #include <QRegularExpression>
++#include <QRegExp>
+ #include <QThread>
+ 
+ #include "command.h"
+diff --git a/3rdparty/qredisclient/src/qredisclient/transporters/defaulttransporter.cpp b/3rdparty/qredisclient/src/qredisclient/transporters/defaulttransporter.cpp
+index e54739b..7dd86b2 100644
+--- a/3rdparty/qredisclient/src/qredisclient/transporters/defaulttransporter.cpp
++++ b/3rdparty/qredisclient/src/qredisclient/transporters/defaulttransporter.cpp
+@@ -91,7 +91,10 @@ bool RedisClient::DefaultTransporter::connectToHost() {
+     QList<QSslCertificate> trustedCas = conf.sslCaCertificates();
+ 
+     if (!trustedCas.empty()) {
+-      m_socket->addCaCertificates(trustedCas);
++      // QSslSocket::addCaCertificates() was removed in Qt 6.
++      QSslConfiguration sslConfig = m_socket->sslConfiguration();
++      sslConfig.addCaCertificates(trustedCas);
++      m_socket->setSslConfiguration(sslConfig);
+     }
+ 
+     QString privateKey = conf.sslPrivateKeyPath();
+@@ -106,9 +109,7 @@ bool RedisClient::DefaultTransporter::connectToHost() {
+ 
+     SignalWaiter socketWaiter(conf.connectionTimeout());
+     socketWaiter.addAbortSignal(
+-        m_socket.data(),
+-        static_cast<void (QAbstractSocket::*)(QAbstractSocket::SocketError)>(
+-            &QAbstractSocket::error));
++        m_socket.data(), &QAbstractSocket::errorOccurred);
+     socketWaiter.addAbortSignal(m_connection, &RedisClient::Connection::shutdownStart);
+     socketWaiter.addAbortSignal(m_socket.data(),
+                                 &QAbstractSocket::disconnected);
+@@ -119,9 +120,7 @@ bool RedisClient::DefaultTransporter::connectToHost() {
+   } else {
+     SignalWaiter socketWaiter(conf.connectionTimeout());
+     socketWaiter.addAbortSignal(
+-        m_socket.data(),
+-        static_cast<void (QAbstractSocket::*)(QAbstractSocket::SocketError)>(
+-            &QAbstractSocket::error));
++        m_socket.data(), &QAbstractSocket::errorOccurred);
+     socketWaiter.addAbortSignal(this, &QObject::destroyed);
+     socketWaiter.addAbortSignal(m_socket.data(),
+                                 &QAbstractSocket::disconnected);
+diff --git a/src/app/app.cpp b/src/app/app.cpp
+index c8ac6e5..6bc6606 100644
+--- a/src/app/app.cpp
++++ b/src/app/app.cpp
+@@ -307,7 +307,7 @@ void Application::registerQmlRootObjects() {
+ 
+ void Application::initQml() {
+   if (m_renderingBackend == "auto") {
+-    QQuickWindow::setSceneGraphBackend(QSGRendererInterface::Software);
++    QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
+   } else {
+     QQuickWindow::setSceneGraphBackend(m_renderingBackend);
+   }
+@@ -319,7 +319,7 @@ void Application::initQml() {
+     m_engine.load(QUrl(QStringLiteral("qrc:///app.qml")));
+   } catch (...) {
+     qDebug() << "Failed to load app window. Retrying with software renderer...";
+-    QQuickWindow::setSceneGraphBackend(QSGRendererInterface::Software);
++    QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
+     m_engine.load(QUrl(QStringLiteral("qrc:///app.qml")));
+   }
+ 
+diff --git a/src/app/models/configmanager.cpp b/src/app/models/configmanager.cpp
+index 7c99820..b3eb417 100644
+--- a/src/app/models/configmanager.cpp
++++ b/src/app/models/configmanager.cpp
+@@ -6,8 +6,9 @@
+ #include <QFileInfo>
+ #include <QJsonArray>
+ #include <QJsonDocument>
+-#include <QJsonObject>
+-#include <QVariantHash>
++#include <QJsonObject>
++#include <QStringConverter>
++#include <QVariantHash>
+ #include <QXmlStreamReader>
+ #include "app/models/connectionconf.h"
+ 
+@@ -81,8 +82,8 @@ bool saveJsonArrayToFile(const QJsonArray &c, const QString &f) {
+   QFile confFile(f);
+ 
+   if (confFile.open(QIODevice::WriteOnly)) {
+-    QTextStream outStream(&confFile);
+-    outStream.setCodec("UTF-8");
++    QTextStream outStream(&confFile);
++    outStream.setEncoding(QStringConverter::Utf8);
+     outStream << config.toJson();
+     confFile.close();
+     return true;
+diff --git a/src/app/models/treeoperations.cpp b/src/app/models/treeoperations.cpp
+index 2b392b4..7890ed0 100644
+--- a/src/app/models/treeoperations.cpp
++++ b/src/app/models/treeoperations.cpp
+@@ -194,7 +194,7 @@ QFuture<void> TreeOperations::getDatabases(
+ 
+   getReadyConnection(
+       [this, callback](QSharedPointer<RedisClient::Connection> c) {
+-        QtConcurrent::run(this, &TreeOperations::loadDatabases, c, m_dbScanOp,
++        QtConcurrent::run(&TreeOperations::loadDatabases, this, c, m_dbScanOp,
+                           [callback](RedisClient::DatabaseList dbs, const QString& err){
+             callback->call(dbs, err);
+         });
+diff --git a/src/app/qmlutils.cpp b/src/app/qmlutils.cpp
+index 4c75233..e14b0d4 100644
+--- a/src/app/qmlutils.cpp
++++ b/src/app/qmlutils.cpp
+@@ -264,9 +264,9 @@ bool QmlUtils::saveToFile(const QVariant &value, const QString &path) {
+   return true;
+ }
+ 
+-QtCharts::QDateTimeAxis *findDateTimeAxis(QtCharts::QXYSeries *series) {
+-  using namespace QtCharts;
+-
++// Qt 6 dropped the QtCharts namespace: the chart classes live in the global
++// namespace now.
++QDateTimeAxis *findDateTimeAxis(QXYSeries *series) {
+   QList<QAbstractAxis *> axes = series->attachedAxes();
+ 
+   QDateTimeAxis *ax = nullptr;
+@@ -281,10 +281,8 @@ QtCharts::QDateTimeAxis *findDateTimeAxis(QtCharts::QXYSeries *series) {
+   return ax;
+ }
+ 
+-void QmlUtils::addNewValueToDynamicChart(QtCharts::QXYSeries *series,
++void QmlUtils::addNewValueToDynamicChart(QXYSeries *series,
+                                          qreal value) {
+-  using namespace QtCharts;
+-
+   QDateTimeAxis *ax = findDateTimeAxis(series);
+ 
+   if (!(ax && series)) {
+diff --git a/src/app/qmlutils.h b/src/app/qmlutils.h
+index cae12d0..cafab21 100644
+--- a/src/app/qmlutils.h
++++ b/src/app/qmlutils.h
+@@ -40,7 +40,7 @@ public:
+ 
+     Q_INVOKABLE void copyToClipboard(const QString &text);
+     Q_INVOKABLE bool saveToFile(const QVariant &value, const QString &path);
+-    Q_INVOKABLE void addNewValueToDynamicChart(QtCharts::QXYSeries* series, qreal value);
++    Q_INVOKABLE void addNewValueToDynamicChart(QXYSeries* series, qreal value);
+     Q_INVOKABLE QObject* wrapLargeText(const QByteArray &text);
+     Q_INVOKABLE void deleteTextWrapper(QObject* w);
+     Q_INVOKABLE QString escapeHtmlEntities(const QString& t);
+diff --git a/src/modules/bulk-operations/operations/deleteoperation.cpp b/src/modules/bulk-operations/operations/deleteoperation.cpp
+index 65687ec..a096b7d 100644
+--- a/src/modules/bulk-operations/operations/deleteoperation.cpp
++++ b/src/modules/bulk-operations/operations/deleteoperation.cpp
+@@ -33,7 +33,7 @@ void BulkOperations::DeleteOperation::performOperation(
+           removalCmd = "UNLINK";
+         }
+ 
+-        QtConcurrent::run(this, &DeleteOperation::deleteKeys, m_affectedKeys,
++        QtConcurrent::run(&DeleteOperation::deleteKeys, this, m_affectedKeys,
+                           removalCmd, [this, removalCmd, returnResults]() {
+                             // Retry on keys with errors
+                             if (m_keysWithErrors.size() > 0) {
+diff --git a/src/modules/bulk-operations/operations/rdbimport.cpp b/src/modules/bulk-operations/operations/rdbimport.cpp
+index cc24065..6e31b27 100644
+--- a/src/modules/bulk-operations/operations/rdbimport.cpp
++++ b/src/modules/bulk-operations/operations/rdbimport.cpp
+@@ -132,7 +132,9 @@ void BulkOperations::RDBImportOperation::performOperation(
+                 return processError(QCoreApplication::translate(
+                     "RESP", "Target connection error"));
+               }
+-              QtConcurrent::run(processCommands, commands);
++              QtConcurrent::run([processCommands, commands]() {
++                processCommands(commands);
++              });
+             },
+             [this](const QString& err) { processError(err); });
+       });
+diff --git a/src/modules/bulk-operations/operations/ttloperation.cpp b/src/modules/bulk-operations/operations/ttloperation.cpp
+index 165167c..551f24f 100644
+--- a/src/modules/bulk-operations/operations/ttloperation.cpp
++++ b/src/modules/bulk-operations/operations/ttloperation.cpp
+@@ -26,7 +26,7 @@ void BulkOperations::TtlOperation::performOperation(
+ 
+   QByteArray ttl = m_metadata["ttl"].toString().toUtf8();
+ 
+-  QtConcurrent::run(this, &TtlOperation::setTtl, m_affectedKeys, ttl,
++  QtConcurrent::run(&TtlOperation::setTtl, this, m_affectedKeys, ttl,
+                     [this, ttl, returnResults]() {
+                       // Retry on keys with errors
+                       if (m_keysWithErrors.size() > 0) {
+diff --git a/src/modules/common/sortfilterproxymodel.cpp b/src/modules/common/sortfilterproxymodel.cpp
+index ac93444..71427f2 100644
+--- a/src/modules/common/sortfilterproxymodel.cpp
++++ b/src/modules/common/sortfilterproxymodel.cpp
+@@ -1,9 +1,33 @@
+ #include "sortfilterproxymodel.h"
+ 
+ #include "sortfilterproxymodel.h"
++#include <QRegularExpression>
+ #include <QtDebug>
+ #include <QtQml>
+ 
++namespace {
++// Qt 6 replaced QRegExp with QRegularExpression, whose syntax enum is not
++// compatible, so RDM's FilterSyntax values are mapped explicitly.
++QRegularExpression buildFilterExpression(const QString &filter,
++                                         SortFilterProxyModel::FilterSyntax syntax,
++                                         Qt::CaseSensitivity cs) {
++    const QRegularExpression::PatternOptions options =
++        (cs == Qt::CaseInsensitive) ? QRegularExpression::CaseInsensitiveOption
++                                    : QRegularExpression::NoPatternOption;
++
++    switch (syntax) {
++    case SortFilterProxyModel::Wildcard:
++        return QRegularExpression(
++            QRegularExpression::wildcardToRegularExpression(filter), options);
++    case SortFilterProxyModel::FixedString:
++        return QRegularExpression(QRegularExpression::escape(filter), options);
++    case SortFilterProxyModel::RegExp:
++    default:
++        return QRegularExpression(filter, options);
++    }
++}
++} // namespace
++
+ SortFilterProxyModel::SortFilterProxyModel(QObject *parent) : QSortFilterProxyModel(parent), m_complete(false)
+ {
+ }
+@@ -58,23 +82,26 @@ void SortFilterProxyModel::setFilterRole(const QByteArray &role)
+ 
+ QString SortFilterProxyModel::filterString() const
+ {
+-    return filterRegExp().pattern();
++    return filterRegularExpression().pattern();
+ }
+ 
+ void SortFilterProxyModel::setFilterString(const QString &filter)
+ {
+-    setFilterRegExp(QRegExp(filter, filterCaseSensitivity(), static_cast<QRegExp::PatternSyntax>(filterSyntax())));
++    setFilterRegularExpression(
++        buildFilterExpression(filter, m_filterSyntax, filterCaseSensitivity()));
+     emit filterStringChanged();
+ }
+ 
+ SortFilterProxyModel::FilterSyntax SortFilterProxyModel::filterSyntax() const
+ {
+-    return static_cast<FilterSyntax>(filterRegExp().patternSyntax());
++    return m_filterSyntax;
+ }
+ 
+ void SortFilterProxyModel::setFilterSyntax(SortFilterProxyModel::FilterSyntax syntax)
+ {
+-    setFilterRegExp(QRegExp(filterString(), filterCaseSensitivity(), static_cast<QRegExp::PatternSyntax>(syntax)));
++    m_filterSyntax = syntax;
++    setFilterRegularExpression(
++        buildFilterExpression(filterString(), m_filterSyntax, filterCaseSensitivity()));
+ }
+ 
+ void SortFilterProxyModel::classBegin()
+diff --git a/src/modules/common/sortfilterproxymodel.h b/src/modules/common/sortfilterproxymodel.h
+index c7535ae..eed7510 100644
+--- a/src/modules/common/sortfilterproxymodel.h
++++ b/src/modules/common/sortfilterproxymodel.h
+@@ -62,4 +62,5 @@ private:
+     bool m_complete;
+     QByteArray m_sortRole;
+     QByteArray m_filterRole;
++    FilterSyntax m_filterSyntax = RegExp;
+ };
+diff --git a/src/modules/common/tabmodel.cpp b/src/modules/common/tabmodel.cpp
+index 0c5626a..3da1996 100644
+--- a/src/modules/common/tabmodel.cpp
++++ b/src/modules/common/tabmodel.cpp
+@@ -9,10 +9,9 @@ TabModel::TabModel(QSharedPointer<RedisClient::Connection> connection,
+ 
+ TabModel::~TabModel() {
+   QtConcurrent::run(
+-      [](QSharedPointer<RedisClient::Connection> connection) {
++      [connection = m_connection]() {
+         connection->disconnect();
+-      },
+-      m_connection);
++      });
+ 
+   m_connection.clear();
+ }
+diff --git a/src/modules/connections-tree/items/abstractnamespaceitem.cpp b/src/modules/connections-tree/items/abstractnamespaceitem.cpp
+index 2b2cf4c..ab87426 100644
+--- a/src/modules/connections-tree/items/abstractnamespaceitem.cpp
++++ b/src/modules/connections-tree/items/abstractnamespaceitem.cpp
+@@ -321,12 +321,14 @@ void AbstractNamespaceItem::renderRawKeys(
+       getDbIndex(),   renderingLimit,
+       appendNewItems, checkPreRenderedItems, keysShortNameRendering()};
+ 
++  // Qt 6 removed the "run(function, arguments...)" overload.
+   auto future = QtConcurrent::run(
+-      [](QList<QByteArray> keylist) {
+-        std::sort(keylist.begin(), keylist.end());
+-        return keylist;
+-      },
+-      keylist);
++      [keylist]() {
++        // keylist is captured from a const reference, so sort a local copy.
++        auto sortedKeys = keylist;
++        std::sort(sortedKeys.begin(), sortedKeys.end());
++        return sortedKeys;
++      });
+ 
+   auto selfWPtr = getSelf();
+ 
+@@ -408,7 +410,7 @@ void AbstractNamespaceItem::getMemoryUsage(
+   m_runningOperation = QSharedPointer<AsyncFuture::Deferred<qlonglong>>(
+       new AsyncFuture::Deferred<qlonglong>());
+ 
+-  QtConcurrent::run(this, &AbstractNamespaceItem::calculateUsedMemory,
++  QtConcurrent::run(&AbstractNamespaceItem::calculateUsedMemory, this,
+                     m_runningOperation, callback);
+ 
+   return;
+diff --git a/src/modules/connections-tree/items/namespaceitem.cpp b/src/modules/connections-tree/items/namespaceitem.cpp
+index 0ae140a..2f297b7 100644
+--- a/src/modules/connections-tree/items/namespaceitem.cpp
++++ b/src/modules/connections-tree/items/namespaceitem.cpp
+@@ -32,11 +32,13 @@ QString NamespaceItem::getDisplayName() const {
+   return title;
+ }
+ 
+-QByteArray NamespaceItem::getName() const {
+-  qsizetype pos = m_fullPath.lastIndexOf(m_operations->getNamespaceSeparator());
+-
+-  if (pos >= 0) {
+-      return m_fullPath.mid(pos + m_operations->getNamespaceSeparator().size());
++QByteArray NamespaceItem::getName() const {
++  // Qt 6 no longer implicitly converts QString to QByteArray.
++  const QByteArray separator = m_operations->getNamespaceSeparator().toUtf8();
++  qsizetype pos = m_fullPath.lastIndexOf(separator);
++
++  if (pos >= 0) {
++      return m_fullPath.mid(pos + separator.size());
+   } else {
+       return m_fullPath;
+   }
+diff --git a/src/modules/connections-tree/keysrendering.cpp b/src/modules/connections-tree/keysrendering.cpp
+index a1e99d0..16c8c75 100644
+--- a/src/modules/connections-tree/keysrendering.cpp
++++ b/src/modules/connections-tree/keysrendering.cpp
+@@ -71,9 +71,9 @@ void KeysTreeRenderer::renderKeys(QSharedPointer<Operations> operations,
+   auto isBulkInsert = [settings, preRenderedKeysSet, unprocessedPartStart](
+                           const QByteArray &current, const QByteArray &next) {
+     return (settings.appendNewItems &&
+-            current.indexOf(settings.nsSeparator, unprocessedPartStart) == -1 &&
++            current.indexOf(settings.nsSeparator.toUtf8(), unprocessedPartStart) == -1 &&
+             !next.isEmpty() &&
+-            next.indexOf(settings.nsSeparator, unprocessedPartStart) == -1 &&
++            next.indexOf(settings.nsSeparator.toUtf8(), unprocessedPartStart) == -1 &&
+             !preRenderedKeysSet.contains(next));
+   };
+ 
+@@ -98,8 +98,9 @@ void KeysTreeRenderer::renderKeys(QSharedPointer<Operations> operations,
+         continue;
+     } else if (bulkInsertItems.size() > 0 && parent) {
+       int itemsAboutToBeInserted =
+-          qMin(static_cast<uint>(bulkInsertItems.size()),
+-               settings.renderLimit - parent->getAllChilds().size());
++          qMin(static_cast<int>(bulkInsertItems.size()),
++               static_cast<int>(settings.renderLimit) -
++                   static_cast<int>(parent->getAllChilds().size()));
+ 
+       qDebug() << "Bulk insert" << itemsAboutToBeInserted;
+ 
+@@ -168,7 +169,7 @@ void KeysTreeRenderer::renderLazily(QSharedPointer<AbstractNamespaceItem> root,
+   int indexOfNaspaceSeparator =
+       (settings.nsSeparator.isEmpty())
+           ? -1
+-          : notProcessedKeyPart.indexOf(settings.nsSeparator);
++          : notProcessedKeyPart.indexOf(settings.nsSeparator.toUtf8());
+ 
+   if (indexOfNaspaceSeparator == -1) {
+     if (parent->getAllChilds().size() >= settings.renderLimit) {
+diff --git a/src/modules/connections-tree/model.cpp b/src/modules/connections-tree/model.cpp
+index b95e9d1..ace90d6 100644
+--- a/src/modules/connections-tree/model.cpp
++++ b/src/modules/connections-tree/model.cpp
+@@ -257,7 +257,8 @@ void Model::itemLayoutChanged(QWeakPointer<TreeItem> item) {
+   if (!index.isValid()) return;
+ 
+   if (!m_pendingChanges.contains(item)) {
+-      qWarning() << "Item " << item << " doesnt have pending layout changes";
++      qWarning() << "Item " << item.toStrongRef().data()
++                 << " doesnt have pending layout changes";
+       return;
+   }
+ 
+diff --git a/src/modules/value-editor/largetextmodel.cpp b/src/modules/value-editor/largetextmodel.cpp
+index 0ade385..b9d770a 100644
+--- a/src/modules/value-editor/largetextmodel.cpp
++++ b/src/modules/value-editor/largetextmodel.cpp
+@@ -1,5 +1,7 @@
+ #include "largetextmodel.h"
+ #include <QDebug>
++#include <QRegularExpression>
++#include <QRegExp>
+ 
+ ValueEditor::LargeTextWrappingModel::LargeTextWrappingModel(const QString &text,
+                                                             uint chunkSize)
+@@ -88,9 +90,11 @@ QVariantList ValueEditor::LargeTextWrappingModel::searchText(QString p, int from
+     int length = 0;
+ 
+     if (regex) {
+-        auto rx = QRegExp(p);
+-        res = text.indexOf(rx, from);
+-        length = rx.matchedLength();
++        // Qt 6 removed QString::indexOf(QRegExp).
++        const QRegularExpression rx(p);
++        const QRegularExpressionMatch m = rx.match(text, from);
++        res = m.hasMatch() ? static_cast<int>(m.capturedStart()) : -1;
++        length = m.hasMatch() ? static_cast<int>(m.capturedLength()) : 0;
+     } else {
+         res = text.indexOf(p, from, Qt::CaseInsensitive);
+         length = p.size();
+diff --git a/src/modules/value-editor/tabsmodel.cpp b/src/modules/value-editor/tabsmodel.cpp
+index a3a530f..d86e830 100644
+--- a/src/modules/value-editor/tabsmodel.cpp
++++ b/src/modules/value-editor/tabsmodel.cpp
+@@ -3,9 +3,26 @@
+ #include <qredisclient/utils/text.h>
+ #include <QCoreApplication>
+ #include <QDebug>
++#include <QRegularExpression>
+ #include <QQmlEngine>
+ #include <QtConcurrent>
+ #include "app/events.h"
++
++namespace {
++// Qt 6 removed QByteArray::contains(QRegExp), so the filter (a wildcard
++// pattern in every calling site) is matched through QRegularExpression.
++bool keyNameMatchesFilter(const QString &keyName, const QRegExp &filter) {
++    const QString pattern =
++        (filter.patternSyntax() == QRegExp::Wildcard)
++            ? QRegularExpression::wildcardToRegularExpression(filter.pattern())
++            : filter.pattern();
++    const QRegularExpression::PatternOptions options =
++        (filter.caseSensitivity() == Qt::CaseInsensitive)
++            ? QRegularExpression::CaseInsensitiveOption
++            : QRegularExpression::NoPatternOption;
++    return QRegularExpression(pattern, options).match(keyName).hasMatch();
++}
++} // namespace
+ #include "connections-tree/items/keyitem.h"
+ #include "value-editor/valueviewmodel.h"
+ 
+@@ -128,7 +145,8 @@ void ValueEditor::TabsModel::closeDbKeys(
+     bool tabMatch =
+         (model->getConnection()->getConfig().id() ==
+              connection->getConfig().id() &&
+-         model->dbIndex() == dbIndex && model->getKeyName().contains(filter));
++         model->dbIndex() == dbIndex &&
++         keyNameMatchesFilter(model->getKeyName(), filter));
+ 
+     if (tabMatch) {
+       beginRemoveRows(QModelIndex(), index, index);
+diff --git a/src/modules/value-editor/tabsmodel.h b/src/modules/value-editor/tabsmodel.h
+index 7ec3e96..087bee5 100644
+--- a/src/modules/value-editor/tabsmodel.h
++++ b/src/modules/value-editor/tabsmodel.h
+@@ -2,6 +2,7 @@
+ #include <QAbstractListModel>
+ #include <QByteArray>
+ #include <QPair>
++#include <QRegExp>
+ #include <QSharedPointer>
+ #include <QString>
+ #include <functional>
+diff --git a/src/resp.pro b/src/resp.pro
+index aac2945..c41a096 100644
+--- a/src/resp.pro
++++ b/src/resp.pro
+@@ -10,7 +10,8 @@ CCACHE_BIN = $$system(which ccache)
+   CONFIG+=ccache
+ }
+ 
+-QT += core gui network concurrent widgets quick quickwidgets charts svg
++# Qt 6 requires C++17, and QRegExp/QTextCodec moved into the Qt5Compat module.
++QT += core gui network concurrent widgets quick quickwidgets charts svg core5compat
+ 
+ TARGET = resp
+ TEMPLATE = app
+@@ -83,7 +84,7 @@ release {
+ }
+ 
+ win32 {
+-    CONFIG += c++11
++    CONFIG += c++17
+ 
+     RC_ICONS = $$PWD/resources/images/logo.ico
+     QMAKE_TARGET_COMPANY = resp.app
+@@ -100,7 +101,7 @@ win32 {
+ unix:macx { # OSX
+     TARGET = "RESP"
+     QT += svg
+-    CONFIG += c++11
++    CONFIG += c++17
+ 
+     debug: CONFIG-=app_bundle
+ 
