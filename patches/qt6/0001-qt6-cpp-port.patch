@@ -685,3 +685,42 @@ index aac2945..c41a096 100644
  
      debug: CONFIG-=app_bundle
  
+diff --git a/3rdparty/pyotherside b/3rdparty/pyotherside
+--- a/3rdparty/pyotherside
++++ b/3rdparty/pyotherside
+@@ -1 +1 @@
+-Subproject commit c1a8cc03266b3b620ba9195e365e8751a8e4c9ef
++Subproject commit c1a8cc03266b3b620ba9195e365e8751a8e4c9ef-dirty
+diff --git a/src/app/app.cpp b/src/app/app.cpp
+index c8ac6e5..f98ba13 100644
+--- a/src/app/app.cpp
++++ b/src/app/app.cpp
+@@ -307,7 +307,7 @@ void Application::registerQmlRootObjects() {
+ 
+ void Application::initQml() {
+   if (m_renderingBackend == "auto") {
+-    QQuickWindow::setSceneGraphBackend(QSGRendererInterface::Software);
++    QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
+   } else {
+     QQuickWindow::setSceneGraphBackend(m_renderingBackend);
+   }
+@@ -319,7 +319,7 @@ void Application::initQml() {
+     m_engine.load(QUrl(QStringLiteral("qrc:///app.qml")));
+   } catch (...) {
+     qDebug() << "Failed to load app window. Retrying with software renderer...";
+-    QQuickWindow::setSceneGraphBackend(QSGRendererInterface::Software);
++    QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
+     m_engine.load(QUrl(QStringLiteral("qrc:///app.qml")));
+   }
+ 
+@@ -332,7 +332,9 @@ void Application::initQml() {
+ }
+ 
+ void Application::initPython() {
+-  m_python = QSharedPointer<QPython>(new QPython(this, 1, 5));
++  // The Python bridge is created from C++, so it has no JS engine of its own -
++  // hand over the engine that owns the QML context.
++  m_python = QSharedPointer<QPython>(new QPython(this, 1, 5, &m_engine));
+   m_python->addImportPath("qrc:/python/");
+ 
+ #ifdef Q_OS_MACOS

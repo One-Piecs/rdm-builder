@@ -112,7 +112,7 @@ index 6c08ec7..dd563f8 100644
                  detailedText: notification.details
  
 diff --git a/src/qml/bulk-operations/BulkOperationsDialog.qml b/src/qml/bulk-operations/BulkOperationsDialog.qml
-index 90312e6..6e7cea3 100644
+index 90312e6..c1b2af1 100644
 --- a/src/qml/bulk-operations/BulkOperationsDialog.qml
 +++ b/src/qml/bulk-operations/BulkOperationsDialog.qml
 @@ -1,7 +1,6 @@
@@ -126,7 +126,17 @@ index 90312e6..6e7cea3 100644
  import "./../common/"
  import "../common/platformutils.js" as PlatformUtils
  
-@@ -437,7 +436,6 @@ BetterDialog {
+@@ -15,7 +14,8 @@ BetterDialog {
+ 
+     property int firstColSize: PlatformUtils.isScalingDisabled()? 300 : 250
+ 
+-    standardButtons: StandardButton.NoButton
++    // Qt 6 moved the enum from the standalone StandardButton type to DialogButtonBox.
++    standardButtons: DialogButtonBox.NoButton
+ 
+     function loadKeys() {
+         bulkOperations.getAffectedKeys()
+@@ -437,7 +437,6 @@ BetterDialog {
              Loader {
                  id: bulkErrorNotification
  
@@ -134,7 +144,7 @@ index 90312e6..6e7cea3 100644
                  property string title
                  property string text
                  property string detailedText
-@@ -446,9 +444,7 @@ BetterDialog {
+@@ -446,9 +445,7 @@ BetterDialog {
                      id: bulkNotificationTemplate
  
                      OkDialog {
@@ -144,7 +154,7 @@ index 90312e6..6e7cea3 100644
                          text: bulkErrorNotification.text
                          detailedText: bulkErrorNotification.detailedText
  
-@@ -509,4 +505,3 @@ BetterDialog {
+@@ -509,4 +506,3 @@ BetterDialog {
          }
      }
  }
@@ -986,7 +996,7 @@ index 75a1a41..0f5e579 100644
  import "../common/platformutils.js" as PlatformUtils
  
 diff --git a/src/qml/connections-tree/TreeItemDelegate.qml b/src/qml/connections-tree/TreeItemDelegate.qml
-index ca712fc..dcb7cf9 100644
+index ca712fc..8168de8 100644
 --- a/src/qml/connections-tree/TreeItemDelegate.qml
 +++ b/src/qml/connections-tree/TreeItemDelegate.qml
 @@ -1,9 +1,7 @@
@@ -1003,7 +1013,19 @@ index ca712fc..dcb7cf9 100644
  import "./../common/platformutils.js" as PlatformUtils
  import "./../common"
  
-@@ -62,7 +60,9 @@ FocusScope {
+@@ -13,6 +11,11 @@ FocusScope {
+     property bool sortConnections: false
+     property var treeRoot
+ 
++    // Qt 6 injects metadata/row/expanded into a TreeView delegate, but not
++    // "selected" - the view's current row is used instead, and it is kept in
++    // sync by the click handlers below.
++    property bool selected: treeRoot ? treeRoot.currentRow === row : false
++
+     function __getIconColorMappings(userColor) {
+         if (!userColor)
+             return {}
+@@ -62,7 +65,9 @@ FocusScope {
          id: dragArea
          anchors.fill: parent
  
@@ -1014,7 +1036,7 @@ index ca712fc..dcb7cf9 100644
  
          drag.target: root.sortConnections ? wrapper : null
          drag.axis: Drag.YAxis
-@@ -83,7 +83,7 @@ FocusScope {
+@@ -83,7 +88,7 @@ FocusScope {
          }
  
          onPressed: {
@@ -1023,7 +1045,7 @@ index ca712fc..dcb7cf9 100644
                  held = true
                  wrapper.border.width = 1
                  wrapper.border.color = sysPalette.light
-@@ -94,16 +94,21 @@ FocusScope {
+@@ -94,16 +99,22 @@ FocusScope {
          onClicked: {
              console.log("Catch event to item")
  
@@ -1036,6 +1058,7 @@ index ca712fc..dcb7cf9 100644
                  mouse.accepted = true
 -                connectionTreeSelectionModel.setCurrentIndex(styleData.index, 1)
 -                connectionsManager.sendEvent(styleData.index, "right-click")
++                treeRoot.currentRow = row
 +                connectionTreeSelectionModel.setCurrentIndex(treeRoot.modelIndex(row, 0), 1)
 +                connectionsManager.sendEvent(treeRoot.modelIndex(row, 0), "right-click")
                  return
@@ -1048,7 +1071,7 @@ index ca712fc..dcb7cf9 100644
                  return
              }
          }
-@@ -118,7 +123,7 @@ FocusScope {
+@@ -118,7 +129,7 @@ FocusScope {
              anchors.rightMargin: 10
              color: "transparent"
  
@@ -1057,7 +1080,7 @@ index ca712fc..dcb7cf9 100644
  
              Drag.active: dragArea.held
              Drag.hotSpot.x: width / 3
-@@ -143,10 +148,10 @@ FocusScope {
+@@ -143,10 +154,10 @@ FocusScope {
                  }
              }
  
@@ -1072,7 +1095,7 @@ index ca712fc..dcb7cf9 100644
              property string itemIconSource: {
                  if (itemLocked) {
                      return PlatformUtils.getThemeIcon("wait.svg")
-@@ -155,7 +160,7 @@ FocusScope {
+@@ -155,7 +166,7 @@ FocusScope {
                  var type = itemType
  
                  if (type === "server") {
@@ -1081,7 +1104,7 @@ index ca712fc..dcb7cf9 100644
                      var serverIcon = ""
  
                      if (server_type === "unknown") {
-@@ -176,7 +181,7 @@ FocusScope {
+@@ -176,7 +187,7 @@ FocusScope {
                          return serverIcon
                      }
                  } else if (type === "database") {
@@ -1090,7 +1113,7 @@ index ca712fc..dcb7cf9 100644
                          return PlatformUtils.getThemeIcon("live_update.svg")
                      } else {
                          var icon = PlatformUtils.getThemeIcon(type + ".svg")
-@@ -189,7 +194,7 @@ FocusScope {
+@@ -189,7 +200,7 @@ FocusScope {
                          }
                      }
                  } else if (type === "namespace" || type == "server_group"
@@ -1099,7 +1122,7 @@ index ca712fc..dcb7cf9 100644
                      return PlatformUtils.getThemeIcon(type + "_open.svg")
                  } else {
                      if (type !== "") {
-@@ -216,14 +221,14 @@ FocusScope {
+@@ -216,14 +227,14 @@ FocusScope {
                  anchors.left: itemIcon.right
                  anchors.leftMargin: 3
                  anchors.verticalCenter: parent.verticalCenter
@@ -1117,7 +1140,7 @@ index ca712fc..dcb7cf9 100644
                  anchors {
                      right: wrapper.right
                      top: wrapper.top
-@@ -231,10 +236,10 @@ FocusScope {
+@@ -231,10 +242,10 @@ FocusScope {
                      rightMargin: 20
                  }
                  height: parent.height
@@ -1130,7 +1153,7 @@ index ca712fc..dcb7cf9 100644
                          return Qt.rgba(baseColor.r, baseColor.g, baseColor.b, 0.85)
                      } else {
                          return "transparent"
-@@ -252,13 +257,17 @@ FocusScope {
+@@ -252,13 +263,17 @@ FocusScope {
                      asynchronous: false
  
                      source: {
@@ -1150,7 +1173,7 @@ index ca712fc..dcb7cf9 100644
                          wrapper.forceActiveFocus()
                          menuWrapper.width = item.width
                      }
-@@ -275,7 +284,7 @@ FocusScope {
+@@ -275,7 +290,7 @@ FocusScope {
              }
  
              onEntered: {
@@ -1159,7 +1182,7 @@ index ca712fc..dcb7cf9 100644
                      wrapper.border.width = 1
                      wrapper.border.color = sysPalette.highlight
                  }
-@@ -284,7 +293,7 @@ FocusScope {
+@@ -284,7 +299,7 @@ FocusScope {
              onDropped: {
                  wrapper.border.width = 0
                  connectionsManager.dropItemAt(drag.source.itemIndex,
