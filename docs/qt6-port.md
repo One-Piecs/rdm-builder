@@ -7,9 +7,12 @@
 ## 现状
 
 - ✅ **C++ 部分已能用 Qt 6 编译并链接**（本机实测：arm64、链接 QtCore / QtCharts / QtCore5Compat 6.11.2，0 错误）
-- ❌ **QML 部分尚未迁移**，界面加载不了，应用启动后随即退出
+- 🟡 **QML 部分已推进过半**：import 版本号已全部清理，对话框 API 已迁移；目前仍卡在
+  `connections-tree/BetterTreeView.qml`（Controls 1 的 `TreeView`），界面尚未能加载
 
-## 已完成（见 `patches/qt6/0001-qt6-cpp-port.patch`，25 个文件）
+## 已完成
+
+### 第一段：C++ 侧（`patches/qt6/0001-qt6-cpp-port.patch`，25 个文件）
 
 | 问题 | 处理 |
 | --- | --- |
@@ -27,13 +30,33 @@
 | pyotherside：Qt 6.5 起 `Q_RETURN_ARG` 不再是 `QGenericReturnArgument` | 采用上游同款手写 `QGenericReturnArgument`（QTBUG-113147） |
 | AsyncFuture 0.4.1 与 Qt6 不兼容 | `QVariant(QMetaType,…)`、去掉 `QRegExp`；回调 trait 改为区分「回调接收 QFuture」与「回调接收结果值」（与上游维护分支一致） |
 
+### 第二段：QML 侧（`patches/qt6/0002-qt6-qml-wip.patch`，84 个文件）
+
+- **全部 QML 的 import 去掉版本号**（`import QtQuick 2.3` → `import QtQuick`，Controls 2.x 同理，Charts / QtQml.Models / Qt.labs.* 一并处理）
+- **删除 16 个文件里多余的 `import QtQuick.Controls.Styles`**（Qt6 无此模块；检查后只有 TabViewStyle / TreeViewStyle 真正被用到）
+- **Qt Quick Dialogs 1.x → Qt6**：
+  - `OkDialog.qml`：`MessageDialog` 的 `standardButtons: StandardButton.Ok` → `buttons: MessageDialog.Ok`（Qt6 无 `icon`/`standardButtons`，调用方的 `icon:` 赋值一并去掉）
+  - `ColorInput.qml`：`dialog.color` → `dialog.selectedColor`
+  - 移除 `AskSecretDialog.qml` 等文件的冗余 Dialogs import
+- **`modality` → `modal`**（Qt6 的 Controls `Dialog` 改名；平台级 MessageDialog 则完全不要设置模态）
+- **删除死代码 `common/BetterTabView.qml`**（Controls 1 的 TabView 封装，全项目无引用——主界面标签栏早已是 Controls 2 的 `TabBar` + `StackLayout`）
+
+顺带澄清一个此前的判断：`value-editor/ValueTable.qml` 用的其实是**新版 TableView**（`columnWidthProvider` + `DelegateChooser`），并不需要重写；项目自带的 `BetterMenu` / `BetterSplitView` / `BetterTabButton` 等封装也已经是 Controls 2。
+
+## 待办（真正的重写部分）
+
+Controls 1 的专属组件只剩三处，且都集中在封装层：
+
+1. **`connections-tree/BetterTreeView.qml`** —— `TableViewColumn` + `TreeViewStyle`（当前卡点）
+2. **`connections-tree/TreeItemDelegate.qml`** 及 `connections-tree/menu/*.qml` —— 依赖 Controls 1 注入的 `styleData`（共约 40 处）
+3. **`common/LegacyTableView.qml`** + 5 个消费者（`ServerClients` / `ServerConfig` / `ServerPubSub` / `ServerSlowlog` / `ExtensionServerSettings`）—— 用 `LC.TableViewColumn` 定义列
+4. **`console/RedisConsole.qml`** —— 混用 TableViewColumn 与 styleData
+
+这些文件同时也是第二步「深浅双主题 + macOS 原生风格」要动的地方，建议一次做完。
+
 ## 待办（第二步的前置）
 
-1. **32 个 QML 文件使用 Qt Quick Controls 1 / `Controls.Styles`** —— 该模块在 Qt6 中已删除，必须重写为 Controls 2。
-   主要集中在 `qml/value-editor/`（17）、`qml/settings/`（5），其余散落在 `qml/common/` 等。
-2. **83 个 QML 文件的 import 需要去掉版本号**（`import QtQuick 2.3` → `import QtQuick`，`import QtQuick.Controls 2.13` → `import QtQuick.Controls`）。
-3. 界面外观迁移（深浅双主题、macOS 原生风格）与第 1 项是同一批文件，应一并完成。
-4. 迁移后需实际启动验证；随后才把 Qt6 构建接入 CI。
+界面外观迁移（深浅双主题、macOS 原生风格）与上面的重写是同一批文件；迁移后需实际启动验证，随后才把 Qt6 构建接入 CI。
 
 ## 复现方式
 

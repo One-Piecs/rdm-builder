@@ -1,0 +1,1384 @@
+diff --git a/src/qml/AppToolBar.qml b/src/qml/AppToolBar.qml
+index a1b5376..d6489b7 100644
+--- a/src/qml/AppToolBar.qml
++++ b/src/qml/AppToolBar.qml
+@@ -1,9 +1,8 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.15
+-import QtQuick.Controls.Styles 1.1
+-import Qt.labs.platform 1.1
+-import QtQml.Models 2.2
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import Qt.labs.platform
++import QtQml.Models
+ import "."
+ import "./common"
+ import "./common/platformutils.js" as PlatformUtils
+diff --git a/src/qml/LogView.qml b/src/qml/LogView.qml
+index 25336f8..27d5037 100644
+--- a/src/qml/LogView.qml
++++ b/src/qml/LogView.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import "./common"
+ 
+ FastTextView {
+diff --git a/src/qml/QuickStartDialog.qml b/src/qml/QuickStartDialog.qml
+index fd42e0d..c343009 100644
+--- a/src/qml/QuickStartDialog.qml
++++ b/src/qml/QuickStartDialog.qml
+@@ -1,7 +1,7 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.13
+-import QtQuick.Window 2.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQuick.Window
+ import "./common"
+ import "./common/platformutils.js" as PlatformUtils
+ 
+diff --git a/src/qml/WelcomeTab.qml b/src/qml/WelcomeTab.qml
+index 423825e..f0a5f5f 100644
+--- a/src/qml/WelcomeTab.qml
++++ b/src/qml/WelcomeTab.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import "./common"
+ import "./common/platformutils.js" as PlatformUtils
+ 
+diff --git a/src/qml/app.qml b/src/qml/app.qml
+index 6c08ec7..dd563f8 100644
+--- a/src/qml/app.qml
++++ b/src/qml/app.qml
+@@ -1,11 +1,9 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.13
+-import QtQuick.Controls.Styles 1.1
+-import QtQml.Models 2.2
+-import QtQuick.Window 2.2
+-import Qt.labs.settings 1.0
+-import QtQuick.Dialogs 1.3 as LegacyDialogs
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQml.Models
++import QtQuick.Window
++import Qt.labs.settings
+ import "."
+ import "./common"
+ import "./common/platformutils.js" as PlatformUtils
+@@ -161,19 +159,16 @@ ApplicationWindow {
+     Loader {
+         id: notification
+ 
+-        property var icon
+         property string text
+         property string details
+ 
+         function showError(msg, details="") {
+-            icon = LegacyDialogs.StandardIcon.Warning
+             text = msg
+             notification.details = details
+             sourceComponent = notificationTemplate
+         }
+ 
+         function showMsg(msg) {
+-            icon = LegacyDialogs.StandardIcon.Information
+             text = msg
+             details = ""
+             sourceComponent = notificationTemplate
+@@ -190,7 +185,6 @@ ApplicationWindow {
+                 objectName: "rdm_qml_error_dialog"
+                 visible: false
+ 
+-                icon: notification.icon
+                 text: notification.text
+                 detailedText: notification.details
+ 
+diff --git a/src/qml/bulk-operations/BulkOperationsDialog.qml b/src/qml/bulk-operations/BulkOperationsDialog.qml
+index 90312e6..6e7cea3 100644
+--- a/src/qml/bulk-operations/BulkOperationsDialog.qml
++++ b/src/qml/bulk-operations/BulkOperationsDialog.qml
+@@ -1,7 +1,6 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.13
+-import QtQuick.Dialogs 1.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import "./../common/"
+ import "../common/platformutils.js" as PlatformUtils
+ 
+@@ -437,7 +436,6 @@ BetterDialog {
+             Loader {
+                 id: bulkErrorNotification
+ 
+-                property var icon: StandardIcon.Warning
+                 property string title
+                 property string text
+                 property string detailedText
+@@ -446,9 +444,7 @@ BetterDialog {
+                     id: bulkNotificationTemplate
+ 
+                     OkDialog {
+-                        modality: Qt.NonModal
+                         title: bulkErrorNotification.title
+-                        icon: bulkErrorNotification.icon
+                         text: bulkErrorNotification.text
+                         detailedText: bulkErrorNotification.detailedText
+ 
+@@ -509,4 +505,3 @@ BetterDialog {
+         }
+     }
+ }
+-
+diff --git a/src/qml/common/AddressInput.qml b/src/qml/common/AddressInput.qml
+index 13e6807..d74b82e 100644
+--- a/src/qml/common/AddressInput.qml
++++ b/src/qml/common/AddressInput.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import "."
+ 
+ RowLayout {    
+diff --git a/src/qml/common/BetterButton.qml b/src/qml/common/BetterButton.qml
+index 504c1ee..7d2300a 100644
+--- a/src/qml/common/BetterButton.qml
++++ b/src/qml/common/BetterButton.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.9
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Controls
+ 
+ Button {
+     id: root
+diff --git a/src/qml/common/BetterCheckbox.qml b/src/qml/common/BetterCheckbox.qml
+index 3521b13..808a604 100644
+--- a/src/qml/common/BetterCheckbox.qml
++++ b/src/qml/common/BetterCheckbox.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.9
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Controls
+ 
+ CheckBox {
+     id: checkBox
+diff --git a/src/qml/common/BetterComboBox.qml b/src/qml/common/BetterComboBox.qml
+index 2d62cc8..37a035b 100644
+--- a/src/qml/common/BetterComboBox.qml
++++ b/src/qml/common/BetterComboBox.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Controls
+ 
+ ComboBox {
+     id: root
+diff --git a/src/qml/common/BetterDialog.qml b/src/qml/common/BetterDialog.qml
+index 1215f0d..fc463ca 100644
+--- a/src/qml/common/BetterDialog.qml
++++ b/src/qml/common/BetterDialog.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Controls
+ import "."
+ 
+ Dialog {
+diff --git a/src/qml/common/BetterDialogButtonBox.qml b/src/qml/common/BetterDialogButtonBox.qml
+index 871c309..1b5f11b 100644
+--- a/src/qml/common/BetterDialogButtonBox.qml
++++ b/src/qml/common/BetterDialogButtonBox.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Controls
+ 
+ DialogButtonBox {
+   spacing: 3
+diff --git a/src/qml/common/BetterGroupbox.qml b/src/qml/common/BetterGroupbox.qml
+index 60dfae7..397a43c 100644
+--- a/src/qml/common/BetterGroupbox.qml
++++ b/src/qml/common/BetterGroupbox.qml
+@@ -1,4 +1,4 @@
+-import QtQuick.Controls 2.3
++import QtQuick.Controls
+ 
+ GroupBox {
+     id: root
+diff --git a/src/qml/common/BetterLabel.qml b/src/qml/common/BetterLabel.qml
+index d1b68dc..d69e91b 100644
+--- a/src/qml/common/BetterLabel.qml
++++ b/src/qml/common/BetterLabel.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.9
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Controls
+ 
+ Label {
+     color: sysPalette.text
+diff --git a/src/qml/common/BetterMenu.qml b/src/qml/common/BetterMenu.qml
+index 899fed6..067268a 100644
+--- a/src/qml/common/BetterMenu.qml
++++ b/src/qml/common/BetterMenu.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.0
+-import QtQuick.Controls 2.15
++import QtQuick
++import QtQuick.Controls
+ 
+ Menu {
+     background: Rectangle {
+diff --git a/src/qml/common/BetterMenuItem.qml b/src/qml/common/BetterMenuItem.qml
+index 8c76484..765ad63 100644
+--- a/src/qml/common/BetterMenuItem.qml
++++ b/src/qml/common/BetterMenuItem.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.0
+-import QtQuick.Controls 2.15
++import QtQuick
++import QtQuick.Controls
+ 
+ MenuItem {
+     palette.windowText: sysPalette.text
+diff --git a/src/qml/common/BetterMessageDialog.qml b/src/qml/common/BetterMessageDialog.qml
+index d0a12ba..87cae35 100644
+--- a/src/qml/common/BetterMessageDialog.qml
++++ b/src/qml/common/BetterMessageDialog.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Controls
+ import "."
+ 
+ BetterDialog {
+diff --git a/src/qml/common/BetterRadioButton.qml b/src/qml/common/BetterRadioButton.qml
+index c8cbe3a..2663de5 100644
+--- a/src/qml/common/BetterRadioButton.qml
++++ b/src/qml/common/BetterRadioButton.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.9
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Controls
+ 
+ RadioButton {
+     id: root
+diff --git a/src/qml/common/BetterSpinBox.qml b/src/qml/common/BetterSpinBox.qml
+index 7edb8df..b6cbf13 100644
+--- a/src/qml/common/BetterSpinBox.qml
++++ b/src/qml/common/BetterSpinBox.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.13
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ 
+ SpinBox {
+     id: control
+diff --git a/src/qml/common/BetterSplitView.qml b/src/qml/common/BetterSplitView.qml
+index 79eece1..06b5ad0 100644
+--- a/src/qml/common/BetterSplitView.qml
++++ b/src/qml/common/BetterSplitView.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.0
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Controls
+ 
+ SplitView {
+     handle: Rectangle {
+diff --git a/src/qml/common/BetterTab.qml b/src/qml/common/BetterTab.qml
+index 5af3c8d..dda8c02 100644
+--- a/src/qml/common/BetterTab.qml
++++ b/src/qml/common/BetterTab.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.3
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Controls
+ 
+ Item {
+ 
+diff --git a/src/qml/common/BetterTabButton.qml b/src/qml/common/BetterTabButton.qml
+index 8f044d6..699408f 100644
+--- a/src/qml/common/BetterTabButton.qml
++++ b/src/qml/common/BetterTabButton.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.0
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Controls
+ 
+ TabButton {
+     id: root
+diff --git a/src/qml/common/BetterTabView.qml b/src/qml/common/BetterTabView.qml
+deleted file mode 100644
+index 6f4f63d..0000000
+--- a/src/qml/common/BetterTabView.qml
++++ /dev/null
+@@ -1,110 +0,0 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 1.3
+-import QtQuick.Controls.Styles 1.1
+-import "."
+-import "./platformutils.js" as PlatformUtils
+-
+-TabView {
+-    id: root
+-
+-    style: TabViewStyle {
+-        tab: Rectangle {
+-            color: "#cccccc"
+-            implicitWidth: layout.implicitWidth + 3
+-            implicitHeight: 30
+-            radius: 3
+-
+-            Rectangle {
+-                id: content
+-                color: styleData.selected ? "white" : "#e2e2e2"
+-                anchors.fill: parent
+-                anchors.topMargin: control.tabPosition == Qt.TopEdge ? 1 : 0
+-                anchors.rightMargin: 1
+-                anchors.leftMargin: 1
+-                anchors.bottomMargin: control.tabPosition == Qt.BottomEdge ? 1 : 0
+-
+-                RowLayout {
+-                    id: layout
+-                    anchors.fill: parent
+-                    anchors.rightMargin: 8
+-
+-                    Item { Layout.preferredWidth: 3 }
+-
+-                    AnimatedImage {
+-                        source: {
+-                            var icon = root.getTab(styleData.index) !== undefined ? root.getTab(styleData.index).icon : ""
+-
+-                            if (icon && icon.indexOf(".gif") > -1) {
+-                                visible = true
+-                                return icon
+-                            } else {
+-                                visible = false
+-                                return ""
+-                            }
+-                        }
+-
+-                        width: 20
+-                        height: 20
+-                    }
+-
+-                    Image {
+-                        source: {
+-                            var icon = root.getTab(styleData.index) !== undefined ? root.getTab(styleData.index).icon : ""
+-
+-                            if (icon && icon.indexOf(".gif") == -1) {
+-                                visible = true
+-                                return icon
+-                            } else {
+-                                visible = false
+-                                return ""
+-                            }
+-                        }
+-
+-                        sourceSize.width: 20
+-                        sourceSize.height: 20
+-                    }
+-
+-                    Text {
+-                        color: sysPalette.text
+-                        Layout.fillWidth: true
+-                        Layout.minimumWidth: implicitWidth
+-                        text: styleData.title
+-                    }
+-
+-                    Item {
+-                        visible: root.getTab(styleData.index) !== undefined && !root.getTab(styleData.index).closable
+-                        Layout.preferredWidth: 3
+-                    }
+-
+-                    ImageButton {
+-                        visible: root.getTab(styleData.index) !== undefined && root.getTab(styleData.index).closable
+-
+-                        Layout.preferredWidth: 18
+-                        Layout.preferredHeight: 18
+-
+-                        imgSource: PlatformUtils.getThemeIcon("clear.svg")
+-                        onClicked: root.getTab(styleData.index).closeTab(styleData.index)
+-                    }
+-                }
+-            }
+-        }
+-
+-        frame: Rectangle {
+-            color: "#e2e2e2"
+-
+-            Rectangle {
+-                color: "white"
+-                anchors.fill: parent
+-                anchors.bottomMargin: 1
+-                anchors.leftMargin: 1
+-                anchors.rightMargin: 1
+-                anchors.topMargin: 1
+-            }
+-        }
+-
+-        leftCorner: Item {}
+-        rightCorner: Item {}
+-    }
+-
+-}
+diff --git a/src/qml/common/BetterTextField.qml b/src/qml/common/BetterTextField.qml
+index fe01791..fa490ea 100644
+--- a/src/qml/common/BetterTextField.qml
++++ b/src/qml/common/BetterTextField.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.9
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Controls
+ 
+ TextField {
+     id: control
+diff --git a/src/qml/common/BetterToolTip.qml b/src/qml/common/BetterToolTip.qml
+index b8de36c..0ce3083 100644
+--- a/src/qml/common/BetterToolTip.qml
++++ b/src/qml/common/BetterToolTip.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.9
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Controls
+ 
+ ToolTip {
+     property string title
+diff --git a/src/qml/common/ColorInput.qml b/src/qml/common/ColorInput.qml
+index 2746160..fc175f2 100644
+--- a/src/qml/common/ColorInput.qml
++++ b/src/qml/common/ColorInput.qml
+@@ -1,7 +1,7 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.3
+-import QtQuick.Dialogs 1.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQuick.Dialogs
+ import "./platformutils.js" as PlatformUtils
+ 
+ 
+@@ -46,6 +46,6 @@ RowLayout {
+ 
+     ColorDialog {
+         id: dialog
+-        onAccepted: textField.text = dialog.color
++        onAccepted: textField.text = dialog.selectedColor
+     }
+ }
+diff --git a/src/qml/common/FastTextView.qml b/src/qml/common/FastTextView.qml
+index f185199..86c358f 100644
+--- a/src/qml/common/FastTextView.qml
++++ b/src/qml/common/FastTextView.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.0
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Controls
+ import "./platformutils.js" as PlatformUtils
+ 
+ Rectangle {
+diff --git a/src/qml/common/FilePathInput.qml b/src/qml/common/FilePathInput.qml
+index 64b5d29..22b1b83 100644
+--- a/src/qml/common/FilePathInput.qml
++++ b/src/qml/common/FilePathInput.qml
+@@ -1,7 +1,7 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.3
+-import Qt.labs.platform 1.1
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import Qt.labs.platform
+ import "./platformutils.js" as PlatformUtils
+ 
+ 
+diff --git a/src/qml/common/ImageButton.qml b/src/qml/common/ImageButton.qml
+index a1f723c..8ce6ee0 100644
+--- a/src/qml/common/ImageButton.qml
++++ b/src/qml/common/ImageButton.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.9
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Controls
+ import "./platformutils.js" as PlatformUtils
+ 
+ BetterButton {
+diff --git a/src/qml/common/JsonHighlighter.qml b/src/qml/common/JsonHighlighter.qml
+index 6014114..e2edfd0 100644
+--- a/src/qml/common/JsonHighlighter.qml
++++ b/src/qml/common/JsonHighlighter.qml
+@@ -1,4 +1,4 @@
+-import QtQuick 2.0
++import QtQuick
+ import rdm.models 1.0
+ 
+ Item {
+diff --git a/src/qml/common/LegacyTableView.qml b/src/qml/common/LegacyTableView.qml
+index 820762e..fcfd672 100644
+--- a/src/qml/common/LegacyTableView.qml
++++ b/src/qml/common/LegacyTableView.qml
+@@ -1,4 +1,4 @@
+-import QtQuick 2.0
++import QtQuick
+ import QtQuick.Controls 1.4 as LC
+ import "./platformutils.js" as PlatformUtils
+ 
+diff --git a/src/qml/common/NewTextArea.qml b/src/qml/common/NewTextArea.qml
+index 05f519e..9b8f49d 100644
+--- a/src/qml/common/NewTextArea.qml
++++ b/src/qml/common/NewTextArea.qml
+@@ -1,4 +1,4 @@
+-import QtQuick 2.7
++import QtQuick
+ import "./platformutils.js" as PlatformUtils
+ import "."
+ 
+diff --git a/src/qml/common/OkDialog.qml b/src/qml/common/OkDialog.qml
+index 006a4e6..effe6df 100644
+--- a/src/qml/common/OkDialog.qml
++++ b/src/qml/common/OkDialog.qml
+@@ -1,8 +1,10 @@
+-import QtQuick 2.0
+-import QtQuick.Dialogs 1.3
++import QtQuick
++import QtQuick.Dialogs
+ 
+ MessageDialog {
+     id: root
+ 
+-    standardButtons: StandardButton.Ok
++    // Qt 6 replaced Qt Quick Dialogs 1.x: no standardButtons, and the enum
++    // moved onto the MessageDialog type itself.
++    buttons: MessageDialog.Ok
+ }
+diff --git a/src/qml/common/OkDialogOverlay.qml b/src/qml/common/OkDialogOverlay.qml
+index 50db19e..80e39b3 100644
+--- a/src/qml/common/OkDialogOverlay.qml
++++ b/src/qml/common/OkDialogOverlay.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Controls
+ import "."
+ 
+ BetterDialog {
+diff --git a/src/qml/common/PasswordInput.qml b/src/qml/common/PasswordInput.qml
+index b3cf3e7..8ad0535 100644
+--- a/src/qml/common/PasswordInput.qml
++++ b/src/qml/common/PasswordInput.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ 
+ RowLayout {
+     id: root
+diff --git a/src/qml/common/RichTextWithLinks.qml b/src/qml/common/RichTextWithLinks.qml
+index 485b7f1..ded6a51 100644
+--- a/src/qml/common/RichTextWithLinks.qml
++++ b/src/qml/common/RichTextWithLinks.qml
+@@ -1,4 +1,4 @@
+-import QtQuick 2.0
++import QtQuick
+ 
+ Text {
+     property string html
+diff --git a/src/qml/common/SaveToFileButton.qml b/src/qml/common/SaveToFileButton.qml
+index 5423382..1eab20c 100644
+--- a/src/qml/common/SaveToFileButton.qml
++++ b/src/qml/common/SaveToFileButton.qml
+@@ -1,7 +1,7 @@
+-import QtQuick 2.0
+-import QtQuick.Controls 2.13
+-import Qt.labs.platform 1.1
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Controls
++import Qt.labs.platform
++import QtQuick.Layouts
+ import "./platformutils.js" as PlatformUtils
+ 
+ ImageButton {
+diff --git a/src/qml/common/SettingsGroupTitle.qml b/src/qml/common/SettingsGroupTitle.qml
+index 571edba..80810dc 100644
+--- a/src/qml/common/SettingsGroupTitle.qml
++++ b/src/qml/common/SettingsGroupTitle.qml
+@@ -1,4 +1,4 @@
+-import QtQuick.Controls 2.2
++import QtQuick.Controls
+ 
+ BetterLabel {
+     font.pixelSize: 15
+diff --git a/src/qml/connections-tree/BetterTreeView.qml b/src/qml/connections-tree/BetterTreeView.qml
+index d84360a..71a205c 100644
+--- a/src/qml/connections-tree/BetterTreeView.qml
++++ b/src/qml/connections-tree/BetterTreeView.qml
+@@ -1,9 +1,9 @@
+-import QtQuick 2.14
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.4
+ import QtQuick.Controls.Styles 1.4
+-import QtQml.Models 2.2
+-import QtQuick.Window 2.2
++import QtQml.Models
++import QtQuick.Window
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../common"
+ import "."
+diff --git a/src/qml/connections-tree/ConnectionGroupDialog.qml b/src/qml/connections-tree/ConnectionGroupDialog.qml
+index 75a1a41..0f5e579 100644
+--- a/src/qml/connections-tree/ConnectionGroupDialog.qml
++++ b/src/qml/connections-tree/ConnectionGroupDialog.qml
+@@ -1,7 +1,7 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.13
+-import QtQuick.Window 2.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQuick.Window
+ import "../common"
+ import "../common/platformutils.js" as PlatformUtils
+ 
+diff --git a/src/qml/connections-tree/TreeItemDelegate.qml b/src/qml/connections-tree/TreeItemDelegate.qml
+index ca712fc..9f20c6a 100644
+--- a/src/qml/connections-tree/TreeItemDelegate.qml
++++ b/src/qml/connections-tree/TreeItemDelegate.qml
+@@ -1,9 +1,8 @@
+-import QtQuick 2.14
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.4
+-import QtQuick.Controls.Styles 1.4
+-import QtQml.Models 2.2
+-import QtQuick.Window 2.2
++import QtQml.Models
++import QtQuick.Window
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../common"
+ 
+diff --git a/src/qml/connections-tree/menu/InlineMenu.qml b/src/qml/connections-tree/menu/InlineMenu.qml
+index 807eb7b..8df403b 100644
+--- a/src/qml/connections-tree/menu/InlineMenu.qml
++++ b/src/qml/connections-tree/menu/InlineMenu.qml
+@@ -1,7 +1,7 @@
+-import QtQuick 2.5
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.4
+-import QtQuick.Window 2.2
++import QtQuick.Window
+ import "./../../common/platformutils.js" as PlatformUtils
+ import "./../../"
+ import "./../../common/"
+diff --git a/src/qml/connections-tree/menu/database.qml b/src/qml/connections-tree/menu/database.qml
+index 5dce53c..dacf34d 100644
+--- a/src/qml/connections-tree/menu/database.qml
++++ b/src/qml/connections-tree/menu/database.qml
+@@ -1,7 +1,7 @@
+-import QtQuick 2.5
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.13
+-import QtQuick.Window 2.2
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQuick.Window
+ import "./../../common/platformutils.js" as PlatformUtils
+ import "."
+ import "./../../common/"
+diff --git a/src/qml/connections-tree/menu/key.qml b/src/qml/connections-tree/menu/key.qml
+index 6ae5b7d..af03ea2 100644
+--- a/src/qml/connections-tree/menu/key.qml
++++ b/src/qml/connections-tree/menu/key.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.4
+ import "."
+ import "./../../common/platformutils.js" as PlatformUtils
+diff --git a/src/qml/connections-tree/menu/namespace.qml b/src/qml/connections-tree/menu/namespace.qml
+index ae042ae..286dc27 100644
+--- a/src/qml/connections-tree/menu/namespace.qml
++++ b/src/qml/connections-tree/menu/namespace.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.4
+ import "."
+ import "./../../common/platformutils.js" as PlatformUtils
+diff --git a/src/qml/connections-tree/menu/server.qml b/src/qml/connections-tree/menu/server.qml
+index d26c218..bae0b46 100644
+--- a/src/qml/connections-tree/menu/server.qml
++++ b/src/qml/connections-tree/menu/server.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.5
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.4
+ import "."
+ import "./../../common/platformutils.js" as PlatformUtils
+diff --git a/src/qml/connections-tree/menu/server_group.qml b/src/qml/connections-tree/menu/server_group.qml
+index 2538a98..74cd757 100644
+--- a/src/qml/connections-tree/menu/server_group.qml
++++ b/src/qml/connections-tree/menu/server_group.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.5
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.4
+ import "."
+ import "./../../common/platformutils.js" as PlatformUtils
+diff --git a/src/qml/connections/AskSecretDialog.qml b/src/qml/connections/AskSecretDialog.qml
+index ec003c4..7100c8e 100644
+--- a/src/qml/connections/AskSecretDialog.qml
++++ b/src/qml/connections/AskSecretDialog.qml
+@@ -1,14 +1,14 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.13
+-import QtQuick.Dialogs 1.3
+-import QtQuick.Window 2.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQuick.Window
+ import "./../common"
+ 
+ Dialog {
+     id: root
+ 
+-    modality: Qt.ApplicationModal
++    // Qt 6 renamed the property (Popup.modal replaces Controls 2's modality).
++    modal: true
+     title: qsTranslate("RESP","Enter " + getSecretName()  + " to connect to ") + config.name
+ 
+     property string secretId: ""
+diff --git a/src/qml/connections/ConnectionSettignsDialog.qml b/src/qml/connections/ConnectionSettignsDialog.qml
+index 79747e8..64cd816 100644
+--- a/src/qml/connections/ConnectionSettignsDialog.qml
++++ b/src/qml/connections/ConnectionSettignsDialog.qml
+@@ -1,7 +1,7 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.13
+-import QtQuick.Window 2.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQuick.Window
+ import "../common"
+ import "../common/platformutils.js" as PlatformUtils
+ 
+diff --git a/src/qml/console/BaseConsole.qml b/src/qml/console/BaseConsole.qml
+index 64f93eb..6c7d288 100644
+--- a/src/qml/console/BaseConsole.qml
++++ b/src/qml/console/BaseConsole.qml
+@@ -1,4 +1,4 @@
+-import QtQuick 2.0
++import QtQuick
+ import QtQuick.Controls 1.4
+ 
+ TextArea {
+diff --git a/src/qml/console/Consoles.qml b/src/qml/console/Consoles.qml
+index 920cee7..193984c 100644
+--- a/src/qml/console/Consoles.qml
++++ b/src/qml/console/Consoles.qml
+@@ -1,8 +1,7 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.3
+-import QtQuick.Controls.Styles 1.1
+-import QtQuick.Window 2.2
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQuick.Window
+ import "./../common"
+ import "./../common/platformutils.js" as PlatformUtils
+ 
+diff --git a/src/qml/console/RedisConsole.qml b/src/qml/console/RedisConsole.qml
+index 085b08b..e46a42a 100644
+--- a/src/qml/console/RedisConsole.qml
++++ b/src/qml/console/RedisConsole.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.3
++import QtQuick
+ import QtQuick.Controls 1.4
+-import QtQuick.Layouts 1.1
++import QtQuick.Layouts
+ import "../common"
+ import "../common/platformutils.js" as PlatformUtils
+ import "."
+diff --git a/src/qml/dummy.qml b/src/qml/dummy.qml
+index 7ba5e1c..5500d7a 100644
+--- a/src/qml/dummy.qml
++++ b/src/qml/dummy.qml
+@@ -1,7 +1,7 @@
+ // Unused dummy QML file to specify import dependencies
+ // This isn't included in the build, but is read by qmlimportscanner for builds.
+ 
+-import QtQuick 2.2
++import QtQuick
+ import QtQuick.PrivateWidgets 1.1
+ 
+ Item { }
+diff --git a/src/qml/extension-server/ExtensionServerSettings.qml b/src/qml/extension-server/ExtensionServerSettings.qml
+index ec0adde..934eaa7 100644
+--- a/src/qml/extension-server/ExtensionServerSettings.qml
++++ b/src/qml/extension-server/ExtensionServerSettings.qml
+@@ -1,9 +1,9 @@
+-import QtQuick 2.15
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import QtQuick.Controls 1.4 as LC
+-import Qt.labs.settings 1.0
+-import QtQuick.Window 2.3
++import Qt.labs.settings
++import QtQuick.Window
+ import "../common"
+ import "../settings"
+ import "../common/platformutils.js" as PlatformUtils
+diff --git a/src/qml/qml.qrc b/src/qml/qml.qrc
+index 75a869e..16cc3d5 100644
+--- a/src/qml/qml.qrc
++++ b/src/qml/qml.qrc
+@@ -7,7 +7,6 @@
+         <file>common/PasswordInput.qml</file>
+         <file>common/AddressInput.qml</file>
+         <file>common/FilePathInput.qml</file>
+-        <file>common/BetterTabView.qml</file>
+         <file>common/BetterTab.qml</file>
+         <file>connections/ConnectionSettignsDialog.qml</file>
+         <file>connections-tree/menu/InlineMenu.qml</file>
+diff --git a/src/qml/server-actions/ServerAction.qml b/src/qml/server-actions/ServerAction.qml
+index acf21be..f102b02 100644
+--- a/src/qml/server-actions/ServerAction.qml
++++ b/src/qml/server-actions/ServerAction.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.0
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Controls
+ 
+ Item {
+     id: root
+diff --git a/src/qml/server-actions/ServerActionTabs.qml b/src/qml/server-actions/ServerActionTabs.qml
+index 9c0e7cc..5e6527a 100644
+--- a/src/qml/server-actions/ServerActionTabs.qml
++++ b/src/qml/server-actions/ServerActionTabs.qml
+@@ -1,9 +1,9 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import QtQuick.Controls 1.4 as LC
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
++import QtQuick.Window
++import QtCharts
+ import "./../common"
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../settings"
+diff --git a/src/qml/server-actions/ServerCharts.qml b/src/qml/server-actions/ServerCharts.qml
+index 022fda4..e889af6 100644
+--- a/src/qml/server-actions/ServerCharts.qml
++++ b/src/qml/server-actions/ServerCharts.qml
+@@ -1,9 +1,9 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import QtQuick.Controls 1.4 as LC
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
++import QtQuick.Window
++import QtCharts
+ import "./../common"
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../settings"
+diff --git a/src/qml/server-actions/ServerClients.qml b/src/qml/server-actions/ServerClients.qml
+index 57c8b21..29af5a6 100644
+--- a/src/qml/server-actions/ServerClients.qml
++++ b/src/qml/server-actions/ServerClients.qml
+@@ -1,10 +1,10 @@
+-import QtQuick 2.15
+-import QtQuick.Layouts 1.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import QtQuick.Controls 1.4 as LC
+-import Qt.labs.qmlmodels 1.0
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
++import Qt.labs.qmlmodels
++import QtQuick.Window
++import QtCharts
+ import "./../common"
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../settings"
+diff --git a/src/qml/server-actions/ServerConfig.qml b/src/qml/server-actions/ServerConfig.qml
+index d869006..3e9fbab 100644
+--- a/src/qml/server-actions/ServerConfig.qml
++++ b/src/qml/server-actions/ServerConfig.qml
+@@ -1,9 +1,9 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import QtQuick.Controls 1.4 as LC
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
++import QtQuick.Window
++import QtCharts
+ import "./../common"
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../settings"
+diff --git a/src/qml/server-actions/ServerPubSub.qml b/src/qml/server-actions/ServerPubSub.qml
+index 13d688e..187beee 100644
+--- a/src/qml/server-actions/ServerPubSub.qml
++++ b/src/qml/server-actions/ServerPubSub.qml
+@@ -1,9 +1,9 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import QtQuick.Controls 1.4 as LC
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
++import QtQuick.Window
++import QtCharts
+ import "./../common"
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../settings"
+diff --git a/src/qml/server-actions/ServerSlowlog.qml b/src/qml/server-actions/ServerSlowlog.qml
+index fca80d2..a245e43 100644
+--- a/src/qml/server-actions/ServerSlowlog.qml
++++ b/src/qml/server-actions/ServerSlowlog.qml
+@@ -1,9 +1,9 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.13
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import QtQuick.Controls 1.4 as LC
+-import QtQuick.Window 2.2
+-import QtCharts 2.3
++import QtQuick.Window
++import QtCharts
+ import "./../common"
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../settings"
+diff --git a/src/qml/settings/BoolOption.qml b/src/qml/settings/BoolOption.qml
+index 32cc51f..08f992e 100644
+--- a/src/qml/settings/BoolOption.qml
++++ b/src/qml/settings/BoolOption.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import "../common"
+ 
+ Item {
+diff --git a/src/qml/settings/ComboboxOption.qml b/src/qml/settings/ComboboxOption.qml
+index 363ceb1..c68125a 100644
+--- a/src/qml/settings/ComboboxOption.qml
++++ b/src/qml/settings/ComboboxOption.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.2
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ 
+ import "../common"
+ 
+diff --git a/src/qml/settings/FontSizeOption.qml b/src/qml/settings/FontSizeOption.qml
+index e18c09e..5d7d52e 100644
+--- a/src/qml/settings/FontSizeOption.qml
++++ b/src/qml/settings/FontSizeOption.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.2
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ 
+ import "../common"
+ import "."
+diff --git a/src/qml/settings/GlobalSettings.qml b/src/qml/settings/GlobalSettings.qml
+index b721772..5dd5e62 100644
+--- a/src/qml/settings/GlobalSettings.qml
++++ b/src/qml/settings/GlobalSettings.qml
+@@ -1,9 +1,9 @@
+-import QtQuick 2.15
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import QtQuick.Controls 1.4 as LC
+-import Qt.labs.settings 1.0
+-import QtQuick.Window 2.3
++import Qt.labs.settings
++import QtQuick.Window
+ import "../common"
+ import "."
+ import "../common/platformutils.js" as PlatformUtils
+diff --git a/src/qml/settings/IntOption.qml b/src/qml/settings/IntOption.qml
+index 8cacd06..a0c2d66 100644
+--- a/src/qml/settings/IntOption.qml
++++ b/src/qml/settings/IntOption.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.3
+-import QtQuick.Controls 2.3
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import "./../common"
+ 
+ Item {
+diff --git a/src/qml/value-editor/AddKeyDialog.qml b/src/qml/value-editor/AddKeyDialog.qml
+index a1082d0..6c34496 100644
+--- a/src/qml/value-editor/AddKeyDialog.qml
++++ b/src/qml/value-editor/AddKeyDialog.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.12
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import "./../common"
+ import "./editors/editor.js" as Editor
+ import "../common/platformutils.js" as PlatformUtils
+diff --git a/src/qml/value-editor/Pagination.qml b/src/qml/value-editor/Pagination.qml
+index 9557644..9a28fe6 100644
+--- a/src/qml/value-editor/Pagination.qml
++++ b/src/qml/value-editor/Pagination.qml
+@@ -1,6 +1,6 @@
+-import QtQuick 2.3
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.13
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
+ import "../common"
+ 
+ ColumnLayout {    
+diff --git a/src/qml/value-editor/ValueTable.qml b/src/qml/value-editor/ValueTable.qml
+index c234081..5885251 100644
+--- a/src/qml/value-editor/ValueTable.qml
++++ b/src/qml/value-editor/ValueTable.qml
+@@ -1,14 +1,13 @@
+-import QtQuick 2.13
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.13
+-import QtQuick.Controls.Styles 1.1
+-import QtQuick.Window 2.2
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQuick.Window
+ import "./editors/editor.js" as Editor
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../common"
+ import "./filters"
+ import rdm.models 1.0
+-import Qt.labs.qmlmodels 1.0
++import Qt.labs.qmlmodels
+ 
+ Item {
+     id: root
+diff --git a/src/qml/value-editor/ValueTableActions.qml b/src/qml/value-editor/ValueTableActions.qml
+index 9868e06..5dedb6e 100644
+--- a/src/qml/value-editor/ValueTableActions.qml
++++ b/src/qml/value-editor/ValueTableActions.qml
+@@ -1,13 +1,12 @@
+-import QtQuick 2.13
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.13
+-import QtQuick.Controls.Styles 1.1
+-import QtQuick.Window 2.2
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQuick.Window
+ import "./editors/editor.js" as Editor
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../common"
+ import rdm.models 1.0
+-import Qt.labs.qmlmodels 1.0
++import Qt.labs.qmlmodels
+ 
+ ColumnLayout {
+     Layout.fillHeight: true
+diff --git a/src/qml/value-editor/ValueTableCell.qml b/src/qml/value-editor/ValueTableCell.qml
+index 1d428b0..62afc2c 100644
+--- a/src/qml/value-editor/ValueTableCell.qml
++++ b/src/qml/value-editor/ValueTableCell.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.0
+-import QtQuick.Controls 2.0
++import QtQuick
++import QtQuick.Controls
+ 
+ Item {
+     id: root
+diff --git a/src/qml/value-editor/ValueTabs.qml b/src/qml/value-editor/ValueTabs.qml
+index f31d309..cba42e6 100644
+--- a/src/qml/value-editor/ValueTabs.qml
++++ b/src/qml/value-editor/ValueTabs.qml
+@@ -1,13 +1,12 @@
+-import QtQuick 2.13
+-import QtQuick.Layouts 1.1
+-import QtQuick.Controls 2.13
+-import QtQuick.Controls.Styles 1.1
+-import QtQuick.Window 2.2
++import QtQuick
++import QtQuick.Layouts
++import QtQuick.Controls
++import QtQuick.Window
+ import "./editors/editor.js" as Editor
+ import "./../common/platformutils.js" as PlatformUtils
+ import "./../common"
+ import rdm.models 1.0
+-import Qt.labs.qmlmodels 1.0
++import Qt.labs.qmlmodels
+ 
+ Repeater {
+ 
+diff --git a/src/qml/value-editor/editors/AbstractEditor.qml b/src/qml/value-editor/editors/AbstractEditor.qml
+index 8e5b197..cc2dac7 100644
+--- a/src/qml/value-editor/editors/AbstractEditor.qml
++++ b/src/qml/value-editor/editors/AbstractEditor.qml
+@@ -1,7 +1,6 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
+ 
+ ColumnLayout {
+ 
+diff --git a/src/qml/value-editor/editors/HashItemEditor.qml b/src/qml/value-editor/editors/HashItemEditor.qml
+index 134c740..39c7d83 100644
+--- a/src/qml/value-editor/editors/HashItemEditor.qml
++++ b/src/qml/value-editor/editors/HashItemEditor.qml
+@@ -1,7 +1,6 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
+ 
+ import "."
+ 
+diff --git a/src/qml/value-editor/editors/MultilineEditor.qml b/src/qml/value-editor/editors/MultilineEditor.qml
+index 535cfea..2dfde38 100644
+--- a/src/qml/value-editor/editors/MultilineEditor.qml
++++ b/src/qml/value-editor/editors/MultilineEditor.qml
+@@ -1,8 +1,8 @@
+-import QtQuick 2.5
+-import QtQuick.Controls 2.13
+-import QtQuick.Layouts 1.1
+-import QtQuick.Window 2.2
+-import Qt.labs.settings 1.0
++import QtQuick
++import QtQuick.Controls
++import QtQuick.Layouts
++import QtQuick.Window
++import Qt.labs.settings
+ import rdm.models 1.0
+ import "../../common/"
+ import "../../common/platformutils.js" as PlatformUtils
+diff --git a/src/qml/value-editor/editors/ReadOnlySingleItemEditor.qml b/src/qml/value-editor/editors/ReadOnlySingleItemEditor.qml
+index 47e1594..5ae1fc5 100644
+--- a/src/qml/value-editor/editors/ReadOnlySingleItemEditor.qml
++++ b/src/qml/value-editor/editors/ReadOnlySingleItemEditor.qml
+@@ -1,7 +1,6 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
+ 
+ import "."
+ 
+diff --git a/src/qml/value-editor/editors/SingleItemEditor.qml b/src/qml/value-editor/editors/SingleItemEditor.qml
+index 87c06c6..a077a0d 100644
+--- a/src/qml/value-editor/editors/SingleItemEditor.qml
++++ b/src/qml/value-editor/editors/SingleItemEditor.qml
+@@ -1,7 +1,6 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
+ 
+ import "."
+ 
+diff --git a/src/qml/value-editor/editors/SortedSetItemEditor.qml b/src/qml/value-editor/editors/SortedSetItemEditor.qml
+index 41c67ad..932e0b8 100644
+--- a/src/qml/value-editor/editors/SortedSetItemEditor.qml
++++ b/src/qml/value-editor/editors/SortedSetItemEditor.qml
+@@ -1,7 +1,6 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
+ 
+ import "."
+ import "../../common"
+diff --git a/src/qml/value-editor/editors/StreamItemEditor.qml b/src/qml/value-editor/editors/StreamItemEditor.qml
+index 91973be..0dccea5 100644
+--- a/src/qml/value-editor/editors/StreamItemEditor.qml
++++ b/src/qml/value-editor/editors/StreamItemEditor.qml
+@@ -1,7 +1,6 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
+ 
+ import "."
+ import "../../common"
+diff --git a/src/qml/value-editor/editors/UnsupportedDataType.qml b/src/qml/value-editor/editors/UnsupportedDataType.qml
+index 60cd294..7f27492 100644
+--- a/src/qml/value-editor/editors/UnsupportedDataType.qml
++++ b/src/qml/value-editor/editors/UnsupportedDataType.qml
+@@ -1,7 +1,6 @@
+-import QtQuick 2.0
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import QtQuick.Controls 1.2
+-import QtQuick.Controls.Styles 1.1
+ import "./../../common"
+ import "."
+ 
+diff --git a/src/qml/value-editor/editors/formatters/ValueFormatters.qml b/src/qml/value-editor/editors/formatters/ValueFormatters.qml
+index 0f434be..9821d0a 100644
+--- a/src/qml/value-editor/editors/formatters/ValueFormatters.qml
++++ b/src/qml/value-editor/editors/formatters/ValueFormatters.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.0
+-import QtQml.Models 2.13
++import QtQuick
++import QtQml.Models
+ import "./hexy.js" as Hexy
+ import "../../../common/platformutils.js" as PlatformUtils
+ 
+diff --git a/src/qml/value-editor/filters/ListFilters.qml b/src/qml/value-editor/filters/ListFilters.qml
+index 6bbb54c..a55cc99 100644
+--- a/src/qml/value-editor/filters/ListFilters.qml
++++ b/src/qml/value-editor/filters/ListFilters.qml
+@@ -1,5 +1,5 @@
+-import QtQuick 2.13
+-import QtQuick.Layouts 1.1
++import QtQuick
++import QtQuick.Layouts
+ import "./../../common"
+ 
+ RowLayout {
+diff --git a/src/qml/value-editor/filters/StreamFilters.qml b/src/qml/value-editor/filters/StreamFilters.qml
+index e2640fe..3969968 100644
+--- a/src/qml/value-editor/filters/StreamFilters.qml
++++ b/src/qml/value-editor/filters/StreamFilters.qml
+@@ -1,7 +1,7 @@
+-import QtQuick 2.13
+-import QtQuick.Controls 2.13
+-import QtQuick.Layouts 1.1
+-import QtQuick.Window 2.2
++import QtQuick
++import QtQuick.Controls
++import QtQuick.Layouts
++import QtQuick.Window
+ import "./../../common"
+ import "../../common/platformutils.js" as PlatformUtils
+ 
